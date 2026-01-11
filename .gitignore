@@ -1,0 +1,14 @@
+.venv/
+.data/
+.history/
+**/__pycache__/
+*.pid
+*.log
+*.epub
+
+.claude/
+.codex/
+
+test_*.py
+
+docs/

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hybrid Reader</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+  </head>
+  <body>
+    <div id="library-view">
+      <h1>My Library</h1>
+      <div id="upload-zone">
+        <input type="file" id="file-upload" accept=".epub" />
+        <p>Drag & Drop or Click to Upload EPUB</p>
+      </div>
+      <div id="book-list">Loading...</div>
+    </div>
+
+    <div id="reader-view" style="display: none">
+      <div id="controls">
+        <button id="back-btn">← Library</button>
+        <span id="book-title">Book Title</span>
+        <span id="status">Ready</span>
+      </div>
+      <div id="viewer"></div>
+      <div id="prev" class="arrow">‹</div>
+      <div id="next" class="arrow">›</div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

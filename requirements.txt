@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+ebooklib
+beautifulsoup4
+spacy
+chromadb
+pydantic
+mcp
