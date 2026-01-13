@@ -2,6 +2,7 @@ import spacy
 import chromadb
 import hashlib
 import ebooklib
+import os
 from dataclasses import dataclass
 from ebooklib import epub
 from bs4 import BeautifulSoup
@@ -10,6 +11,11 @@ import db
 # Initialize Spacy and ChromaDB
 _NLP = None
 chroma_client = chromadb.PersistentClient(path=".data/chroma_db")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "book_chunks")
+QDRANT_VECTOR_DIM = int(os.getenv("QDRANT_VECTOR_DIM", "128"))
+QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
+QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+QDRANT_URL = os.getenv("QDRANT_URL")
 
 
 def get_file_hash(filepath):
@@ -150,6 +156,94 @@ def create_fixed_window_chunks(stream, window=8, overlap=2):
     return chunks
 
 
+def build_chunk_payloads(book_id, stream, chunks):
+    """Build Qdrant payloads for each chunk."""
+    if not chunks:
+        return []
+
+    payloads = []
+    for chunk in chunks:
+        start_item = stream[chunk.pos_start]
+        end_item = stream[chunk.pos_end]
+        payloads.append(
+            {
+                "book_id": book_id,
+                "chapter_index": start_item.chapter_index,
+                "pos_start": start_item.seq_id,
+                "pos_end": end_item.seq_id,
+                "sentences": list(chunk.sentences),
+                "text": " ".join(chunk.sentences),
+            }
+        )
+    return payloads
+
+
+def _hash_embedding(text, dim=QDRANT_VECTOR_DIM):
+    """Deterministic fallback embedding derived from full text."""
+    if dim <= 0:
+        raise ValueError("Embedding dimension must be positive")
+    if not text:
+        return [0.0] * dim
+
+    values = []
+    counter = 0
+    while len(values) < dim:
+        digest = hashlib.blake2b(
+            f"{counter}:{text}".encode("utf-8"), digest_size=32
+        ).digest()
+        for offset in range(0, len(digest), 4):
+            if len(values) >= dim:
+                break
+            chunk = digest[offset : offset + 4]
+            value = int.from_bytes(chunk, "little", signed=False)
+            values.append((value / 2**32) * 2 - 1)
+        counter += 1
+    return values
+
+
+def _get_qdrant_client():
+    try:
+        from qdrant_client import QdrantClient
+    except ImportError as exc:
+        raise RuntimeError("qdrant-client is required for Qdrant ingestion") from exc
+
+    if QDRANT_URL:
+        return QdrantClient(url=QDRANT_URL)
+    return QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+
+
+def _ensure_qdrant_collection(client, collection_name, vector_dim):
+    from qdrant_client.http import models as qmodels
+
+    if client.collection_exists(collection_name):
+        info = client.get_collection(collection_name)
+        existing_size = info.config.params.vectors.size
+        if existing_size != vector_dim:
+            raise ValueError(
+                f"Qdrant collection '{collection_name}' vector size "
+                f"{existing_size} does not match required {vector_dim}"
+            )
+        return
+
+    client.create_collection(
+        collection_name=collection_name,
+        vectors_config=qmodels.VectorParams(
+            size=vector_dim, distance=qmodels.Distance.COSINE
+        ),
+    )
+
+
+def _build_qdrant_points(payloads, vector_dim):
+    from qdrant_client.http import models as qmodels
+
+    points = []
+    for payload in payloads:
+        point_id = f"{payload['book_id']}:{payload['pos_start']}"
+        vector = _hash_embedding(payload["text"], dim=vector_dim)
+        points.append(qmodels.PointStruct(id=point_id, vector=vector, payload=payload))
+    return points
+
+
 def ingest_epub(epub_path, progress_callback=None):
     """Parse EPUB, tokenize sentences, and store in ChromaDB & SQLite."""
     print(f"Ingesting: {epub_path}")
@@ -197,6 +291,15 @@ def ingest_epub(epub_path, progress_callback=None):
     metadatas = []
 
     stream, chapters = build_sentence_stream(book, progress_callback)
+
+    chunks = create_fixed_window_chunks(stream)
+    chunk_payloads = build_chunk_payloads(book_hash, stream, chunks)
+
+    if chunk_payloads:
+        qdrant_client = _get_qdrant_client()
+        _ensure_qdrant_collection(qdrant_client, QDRANT_COLLECTION, QDRANT_VECTOR_DIM)
+        points = _build_qdrant_points(chunk_payloads, QDRANT_VECTOR_DIM)
+        qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=points)
 
     for item in stream:
         ids.append(f"{book_hash}_{item.seq_id}")

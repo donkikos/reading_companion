@@ -7,3 +7,4 @@ spacy
 chromadb
 pydantic
 mcp
+qdrant-client

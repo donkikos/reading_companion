@@ -13,3 +13,9 @@
 - Testing: ruff format ingest.py tests/test_chunks.py; ruff check .; pytest
 - **Learnings for future iterations:** Fixed-window chunking uses sentence indices to preserve deterministic [pos_start..pos_end] ranges.
 ---
+## 2026-01-13 19:01 - US-003
+- What was implemented: Added Qdrant chunk payload construction and upsert during ingestion, plus deterministic hash embeddings and payload tests.
+- Files changed: ingest.py, tests/test_qdrant_payloads.py, requirements.txt, prd.json
+- Testing: ruff format ingest.py tests/test_qdrant_payloads.py; ruff check .; pytest
+- **Learnings for future iterations:** Chunk payloads derive pos_start/pos_end from stream seq_ids and use a deterministic hash embedding when creating Qdrant vectors.
+---
