@@ -230,6 +230,13 @@ def _ensure_qdrant_collection(client, collection_name, vector_dim):
     )
 
 
+def _ensure_qdrant_available(client):
+    try:
+        client.get_collections()
+    except Exception as exc:
+        raise RuntimeError("Qdrant is unavailable; ingestion cannot proceed.") from exc
+
+
 def _build_qdrant_book_filter(book_id):
     from qdrant_client.http import models as qmodels
 
@@ -321,6 +328,7 @@ def ingest_epub(epub_path, progress_callback=None):
 
     if chunk_payloads:
         qdrant_client = _get_qdrant_client()
+        _ensure_qdrant_available(qdrant_client)
         _ensure_qdrant_collection(qdrant_client, QDRANT_COLLECTION, QDRANT_VECTOR_DIM)
         if is_reingest:
             _delete_qdrant_book_chunks(qdrant_client, QDRANT_COLLECTION, book_hash)

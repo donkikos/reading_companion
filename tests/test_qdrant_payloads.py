@@ -4,10 +4,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+import pytest  # noqa: E402
+
 from ingest import (  # noqa: E402
     SentenceStreamItem,
     _build_qdrant_book_filter,
     _delete_qdrant_book_chunks,
+    _ensure_qdrant_available,
     build_chunk_payloads,
     create_fixed_window_chunks,
 )
@@ -66,3 +69,20 @@ def test_delete_qdrant_book_chunks_skips_when_collection_missing():
 
     assert deleted is False
     assert client.deleted is False
+
+
+def test_ensure_qdrant_available_raises_when_unreachable():
+    class FakeClient:
+        def get_collections(self):
+            raise ConnectionError("offline")
+
+    with pytest.raises(RuntimeError, match="Qdrant is unavailable"):
+        _ensure_qdrant_available(FakeClient())
+
+
+def test_ensure_qdrant_available_noop_when_reachable():
+    class FakeClient:
+        def get_collections(self):
+            return {"collections": []}
+
+    _ensure_qdrant_available(FakeClient())
