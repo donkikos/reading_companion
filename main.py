@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import uuid
 import ingest
@@ -97,9 +98,6 @@ def get_task_status(task_id: str):
     return tasks[task_id]
 
 
-import re
-
-
 def normalize_text(text):
     """Aggressively normalize text: lower, strip non-alphanum, single spaces."""
     # Remove all non-alphanumeric chars (keep spaces)
@@ -139,26 +137,28 @@ async def sync_position(request: SyncRequest):
 
         # Check substrings
         if req_norm in match_norm or match_norm in req_norm:
-            print(f"Fallback: Substring match confirmed after normalization.")
+            print("Fallback: Substring match confirmed after normalization.")
             is_match = True
         else:
             print(f"Fallback Failed.\nReq Norm: {req_norm}\nMatch Norm: {match_norm}")
 
     if is_match:
-        seq_id = metadata['seq_id']
+        seq_id = metadata["seq_id"]
         db.update_cursor(request.book_hash, seq_id, cfi=request.cfi)
-        
+
         # Fetch updated details to return chapter info
         details = db.get_book_details(request.book_hash)
-        
+
         return {
-            "status": "synced", 
-            "seq_id": seq_id, 
-            "chapter_title": details['chapter_title'],
-            "distance": distance
+            "status": "synced",
+            "seq_id": seq_id,
+            "chapter_title": details["chapter_title"],
+            "distance": distance,
         }
     else:
-        return JSONResponse(content={"status": "poor_match", "distance": distance}, status_code=400)
+        return JSONResponse(
+            content={"status": "poor_match", "distance": distance}, status_code=400
+        )
 
 
 app.mount("/files", StaticFiles(directory=BOOKS_DIR), name="files")
