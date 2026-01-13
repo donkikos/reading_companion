@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - Skip EPUB navigation docs like `nav.xhtml` when building sentence streams from the spine.
+- On re-ingest, clear existing Chroma docs, chapters, and Qdrant chunks by `book_id` before reindexing.
 
 ## 2026-01-13 18:56 - US-001
 - What was implemented: Added deterministic sentence stream builder with contiguous IDs and nav skipping; ingestion now uses it and added tests.
@@ -18,4 +19,10 @@
 - Files changed: ingest.py, tests/test_qdrant_payloads.py, requirements.txt, prd.json
 - Testing: ruff format ingest.py tests/test_qdrant_payloads.py; ruff check .; pytest
 - **Learnings for future iterations:** Chunk payloads derive pos_start/pos_end from stream seq_ids and use a deterministic hash embedding when creating Qdrant vectors.
+---
+## 2026-01-13 19:15 - US-004
+- What was implemented: Added re-ingest path that clears prior Chroma, chapters, and Qdrant chunks before reindexing; updated book metadata and preserved cursor on reupload; added Qdrant filter tests.
+- Files changed: ingest.py, db.py, tests/test_qdrant_payloads.py, progress.txt, prd.json
+- Testing: ruff format ingest.py db.py tests/test_qdrant_payloads.py; ruff check .; pytest
+- **Learnings for future iterations:** Re-ingestion should clear all existing per-book storage before new chunk upserts to avoid stale Qdrant points and duplicate chapter data.
 ---

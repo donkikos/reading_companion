@@ -93,6 +93,31 @@ def add_chapters(chapters_data):
     conn.close()
 
 
+def delete_chapters(book_hash):
+    """Remove chapters for a book."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM chapters WHERE book_hash = ?", (book_hash,))
+    conn.commit()
+    conn.close()
+
+
+def update_book_metadata(book_hash, title, author, filepath, total_sequences):
+    """Update existing book metadata."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE books
+        SET title = ?, author = ?, filepath = ?, total_sequences = ?
+        WHERE hash = ?
+    """,
+        (title, author, filepath, total_sequences, book_hash),
+    )
+    conn.commit()
+    conn.close()
+
+
 def update_cursor(book_hash, seq_id, cfi=None):
     """Update the current reading position for a book."""
     conn = sqlite3.connect(DB_PATH)

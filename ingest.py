@@ -233,6 +233,29 @@ def _ensure_qdrant_collection(client, collection_name, vector_dim):
     )
 
 
+def _build_qdrant_book_filter(book_id):
+    from qdrant_client.http import models as qmodels
+
+    return qmodels.Filter(
+        must=[
+            qmodels.FieldCondition(
+                key="book_id", match=qmodels.MatchValue(value=book_id)
+            )
+        ]
+    )
+
+
+def _delete_qdrant_book_chunks(client, collection_name, book_id):
+    from qdrant_client.http import models as qmodels
+
+    if not client.collection_exists(collection_name):
+        return False
+
+    selector = qmodels.FilterSelector(filter=_build_qdrant_book_filter(book_id))
+    client.delete(collection_name=collection_name, points_selector=selector)
+    return True
+
+
 def _build_qdrant_points(payloads, vector_dim):
     from qdrant_client.http import models as qmodels
 
@@ -254,11 +277,11 @@ def ingest_epub(epub_path, progress_callback=None):
     book_hash = get_file_hash(epub_path)
 
     existing = db.get_book(book_hash)
-    if existing:
-        print(f"Book already exists: {existing['title']} ({book_hash})")
+    is_reingest = existing is not None
+    if is_reingest:
+        print(f"Re-ingesting existing book: {existing['title']} ({book_hash})")
         if progress_callback:
-            progress_callback("Done", 100)
-        return book_hash
+            progress_callback("Re-indexing...", 0)
 
     try:
         book = epub.read_epub(epub_path)
@@ -290,6 +313,10 @@ def ingest_epub(epub_path, progress_callback=None):
     documents = []
     metadatas = []
 
+    if is_reingest:
+        collection.delete(where={"book_hash": book_hash})
+        db.delete_chapters(book_hash)
+
     stream, chapters = build_sentence_stream(book, progress_callback)
 
     chunks = create_fixed_window_chunks(stream)
@@ -298,6 +325,8 @@ def ingest_epub(epub_path, progress_callback=None):
     if chunk_payloads:
         qdrant_client = _get_qdrant_client()
         _ensure_qdrant_collection(qdrant_client, QDRANT_COLLECTION, QDRANT_VECTOR_DIM)
+        if is_reingest:
+            _delete_qdrant_book_chunks(qdrant_client, QDRANT_COLLECTION, book_hash)
         points = _build_qdrant_points(chunk_payloads, QDRANT_VECTOR_DIM)
         qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=points)
 
@@ -328,11 +357,15 @@ def ingest_epub(epub_path, progress_callback=None):
         collection.add(ids=ids, documents=documents, metadatas=metadatas)
 
     # 2. Store in SQLite
-    db.add_book(book_hash, title, author, epub_path, len(stream))
+    if is_reingest:
+        db.update_book_metadata(book_hash, title, author, epub_path, len(stream))
+    else:
+        db.add_book(book_hash, title, author, epub_path, len(stream))
     db.add_chapters(chapters_data)
 
     # Initialize reading state
-    db.update_cursor(book_hash, 0)
+    if not is_reingest:
+        db.update_cursor(book_hash, 0)
 
     if progress_callback:
         progress_callback("Completed", 100)

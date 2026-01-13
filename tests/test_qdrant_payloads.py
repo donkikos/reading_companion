@@ -6,6 +6,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from ingest import (  # noqa: E402
     SentenceStreamItem,
+    _build_qdrant_book_filter,
+    _delete_qdrant_book_chunks,
     build_chunk_payloads,
     create_fixed_window_chunks,
 )
@@ -39,3 +41,28 @@ def test_build_chunk_payloads_includes_expected_fields():
     assert second["chapter_index"] == 1
     assert second["pos_start"] == 2
     assert second["pos_end"] == 3
+
+
+def test_build_qdrant_book_filter_targets_book_id():
+    filt = _build_qdrant_book_filter("book-xyz")
+
+    assert filt.must[0].key == "book_id"
+    assert filt.must[0].match.value == "book-xyz"
+
+
+def test_delete_qdrant_book_chunks_skips_when_collection_missing():
+    class FakeClient:
+        def __init__(self):
+            self.deleted = False
+
+        def collection_exists(self, _):
+            return False
+
+        def delete(self, **_):
+            self.deleted = True
+
+    client = FakeClient()
+    deleted = _delete_qdrant_book_chunks(client, "missing", "book-xyz")
+
+    assert deleted is False
+    assert client.deleted is False
