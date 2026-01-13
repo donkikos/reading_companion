@@ -12,9 +12,9 @@ Implement V2 retrieval that queries Qdrant for chunked content and enforces stri
 
 ## User Stories
 
-### US-001: Ask the assistant without spoilers
+### US-001: Query Qdrant for the current book
 
-**Description:** As a reader, I want to ask the assistant questions about the book and get answers that never reveal content beyond my reading position.
+**Description:** As a reader, I want the assistant to query Qdrant for my current book so answers use the right context.
 
 **Acceptance Criteria:**
 
@@ -22,22 +22,58 @@ Implement V2 retrieval that queries Qdrant for chunked content and enforces stri
 - [ ] The MCP reads `user_pos` from the persisted reading state before querying Qdrant.
 - [ ] Qdrant queries include a filter `pos_start <= user_pos`.
 - [ ] Results are restricted to the current `book_id`.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
+### US-002: Truncate chunks at the spoiler boundary
+
+**Description:** As a reader, I want answers to never include sentences beyond my reading position.
+
+**Acceptance Criteria:**
+
 - [ ] For each chunk, iterate `sentences` and compute `sid = pos_start + k`.
 - [ ] Stop including sentences when `sid > user_pos`.
 - [ ] Rejoin only safe sentences for final context.
 - [ ] Verify that a partially read chunk only returns sentences at or before `user_pos`.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
 - [ ] Typecheck/lint passes
 
-### US-002: Get clean, relevant context
+### US-003: Deduplicate overlapping context
 
-**Description:** As a reader, I want retrieved context to be relevant and readable without repeated text.
+**Description:** As a reader, I want retrieved context without repeated sentences so answers are clear.
+
+**Acceptance Criteria:**
+
+- [ ] Overlapping sentences across chunks are removed from the final context.
+- [ ] The final context preserves original sentence order.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
+### US-004: Return top-k relevant chunks
+
+**Description:** As a reader, I want responses limited to the most relevant chunks so answers are efficient and focused.
 
 **Acceptance Criteria:**
 
 - [ ] Default retrieval returns top-k 20 chunks.
-- [ ] Overlapping sentences across chunks are removed from the final context.
-- [ ] The final context preserves original sentence order.
 - [ ] Queries use dense vector search without reranking.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
 - [ ] Typecheck/lint passes
 
 ## Functional Requirements

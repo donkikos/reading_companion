@@ -13,40 +13,96 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 ## User Stories
 
-### US-001: Uploading a book builds a spoiler-safe index
+### US-001: Build deterministic sentence stream
 
-**Description:** As a reader, I want my uploaded book indexed into chunks so later answers can be high quality without spoilers.
+**Description:** As a reader, I want my uploaded book parsed into a stable sentence stream so indexing is consistent.
 
 **Acceptance Criteria:**
 
-- [ ] When I upload an EPUB, the system parses it into a deterministic global sentence stream (S0..SN).
-- [ ] Chunks are built with window=8 and overlap=2.
-- [ ] Each chunk stores payload: `book_id`, `chapter_index`, `pos_start`, `pos_end`, `sentences`, `text`.
-- [ ] `pos_start` and `pos_end` map correctly to the global sentence IDs.
-- [ ] Each chunk covers the ordered sentence-id interval `[pos_start..pos_end]`.
-- [ ] For each chunk, `sentences[k]` maps to `sid = pos_start + k`.
-- [ ] Chunk embeddings are computed from the full chunk `text`.
+- [ ] Parse the EPUB into an ordered list of sentences S0..SN.
+- [ ] Sentence IDs are monotonic and contiguous for each book.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
 - [ ] Typecheck/lint passes
 
-### US-002: Re-upload replaces old indexing results
+### US-002: Create fixed-window chunks
+
+**Description:** As a reader, I want my book chunked consistently so retrieval quality is reliable.
+
+**Acceptance Criteria:**
+
+- [ ] Create chunks using a fixed window of 8 sentences with overlap of 2.
+- [ ] Each chunk covers the ordered sentence-id interval `[pos_start..pos_end]`.
+- [ ] For each chunk, `sentences[k]` maps to `sid = pos_start + k`.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
+### US-003: Store chunk payloads in Qdrant
+
+**Description:** As a reader, I want my uploaded book indexed in Qdrant so spoiler-safe retrieval can use it.
+
+**Acceptance Criteria:**
+
+- [ ] Store payload fields: `book_id`, `chapter_index`, `pos_start`, `pos_end`, `sentences`, `text`.
+- [ ] Chunk embeddings are computed from the full chunk `text`.
+- [ ] Qdrant points are written for each chunk of the current book.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
+### US-004: Replace chunks on re-upload
 
 **Description:** As a reader, I want re-uploading a book to replace old indexes so answers stay consistent.
 
 **Acceptance Criteria:**
 
-- [ ] When I re-upload the same book, the system deletes or replaces all prior chunks for the same `book_id`.
+- [ ] Re-ingestion deletes or replaces all prior chunks for the same `book_id`.
 - [ ] No duplicate chunks remain after re-ingest.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
 - [ ] Typecheck/lint passes
 
-### US-003: Ingestion reports status and fails clearly
+### US-005: Track ingestion progress
 
-**Description:** As a reader, I want a clear failure if indexing cannot run so I can retry later.
+**Description:** As a reader, I want to see ingestion progress so I know when the book is ready.
 
 **Acceptance Criteria:**
 
-- [ ] If Qdrant cannot be reached, the upload is marked failed with an explicit error.
-- [ ] Partial ingestion is not marked as successful.
 - [ ] Progress is tracked as a best-effort percentage during ingestion.
+- [ ] Progress is based on sentences processed out of total.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
+### US-006: Fail clearly if Qdrant is unavailable
+
+**Description:** As a reader, I want a clear failure when indexing cannot run so I can retry later.
+
+**Acceptance Criteria:**
+
+- [ ] Ingestion fails with an explicit error when Qdrant cannot be reached.
+- [ ] Partial ingestion is not marked as successful.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
 - [ ] Typecheck/lint passes
 
 ## Functional Requirements

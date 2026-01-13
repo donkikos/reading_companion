@@ -76,6 +76,9 @@ Only update AGENTS.md if you have **genuinely reusable knowledge** that would he
 - Do NOT commit broken code
 - Keep changes focused and minimal
 - Follow existing code patterns
+- Run `pytest` for tests unless the project specifies a different test command
+- Run `ruff check .` for lint unless the project specifies a different lint command
+- Run `ruff format` on changed Python files (line length 100)
 
 ## Browser Testing (Required for Frontend Stories)
 
@@ -92,7 +95,7 @@ A frontend story is NOT complete until browser verification passes.
 
 After completing a user story, check if ALL stories have `passes: true`.
 
-If ALL stories are complete and passing, reply with:
+If ALL stories within the PRD (prd.json) are complete and passing, reply with:
 <promise>COMPLETE</promise>
 
 If there are still stories with `passes: false`, end your response normally (another iteration will pick up the next story).

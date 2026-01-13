@@ -12,3 +12,4 @@
 test_*.py
 
 docs/
+hidden/

@@ -1,0 +1,117 @@
+{
+  "project": "Epub AI Reader",
+  "branchName": "ralph/ingestion-v2",
+  "description": "V2 Ingestion (Qdrant Chunk Indexing) - index EPUBs into chunked Qdrant payloads for spoiler-safe retrieval.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Build deterministic sentence stream",
+      "description": "As a reader, I want my uploaded book parsed into a stable sentence stream so indexing is consistent.",
+      "acceptanceCriteria": [
+        "Parse the EPUB into an ordered list of sentences S0..SN",
+        "Sentence IDs are monotonic and contiguous for each book",
+        "Run ruff format on changed Python files (line length 100)",
+        "Run ruff check . and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run pytest and ensure it passes",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create fixed-window chunks",
+      "description": "As a reader, I want my book chunked consistently so retrieval quality is reliable.",
+      "acceptanceCriteria": [
+        "Create chunks using a fixed window of 8 sentences with overlap of 2",
+        "Each chunk covers the ordered sentence-id interval [pos_start..pos_end]",
+        "For each chunk, sentences[k] maps to sid = pos_start + k",
+        "Run ruff format on changed Python files (line length 100)",
+        "Run ruff check . and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run pytest and ensure it passes",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Store chunk payloads in Qdrant",
+      "description": "As a reader, I want my uploaded book indexed in Qdrant so spoiler-safe retrieval can use it.",
+      "acceptanceCriteria": [
+        "Store payload fields: book_id, chapter_index, pos_start, pos_end, sentences, text",
+        "Chunk embeddings are computed from the full chunk text",
+        "Qdrant points are written for each chunk of the current book",
+        "Run ruff format on changed Python files (line length 100)",
+        "Run ruff check . and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run pytest and ensure it passes",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Replace chunks on re-upload",
+      "description": "As a reader, I want re-uploading a book to replace old indexes so answers stay consistent.",
+      "acceptanceCriteria": [
+        "Re-ingestion deletes or replaces all prior chunks for the same book_id",
+        "No duplicate chunks remain after re-ingest",
+        "Run ruff format on changed Python files (line length 100)",
+        "Run ruff check . and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run pytest and ensure it passes",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Track ingestion progress",
+      "description": "As a reader, I want to see ingestion progress so I know when the book is ready.",
+      "acceptanceCriteria": [
+        "Progress is tracked as a best-effort percentage during ingestion",
+        "Progress is based on sentences processed out of total",
+        "Run ruff format on changed Python files (line length 100)",
+        "Run ruff check . and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run pytest and ensure it passes",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Fail clearly if Qdrant is unavailable",
+      "description": "As a reader, I want a clear failure when indexing cannot run so I can retry later.",
+      "acceptanceCriteria": [
+        "Ingestion fails with an explicit error when Qdrant cannot be reached",
+        "Partial ingestion is not marked as successful",
+        "Run ruff format on changed Python files (line length 100)",
+        "Run ruff check . and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run pytest and ensure it passes",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
