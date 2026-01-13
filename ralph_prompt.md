@@ -96,7 +96,7 @@ A frontend story is NOT complete until browser verification passes.
 After completing a user story, check if ALL stories have `passes: true`.
 
 If ALL stories within the PRD (prd.json) are complete and passing, reply with:
-<promise>COMPLETE</promise>
+<promise> + COMPLETE + </promise> (concatenate exactly, no spaces)
 
 If there are still stories with `passes: false`, end your response normally (another iteration will pick up the next story).
 
