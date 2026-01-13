@@ -17,11 +17,11 @@ for ((i=1; i<=$1; i++)); do
 
   # Run Codex with live streaming output (stdout+stderr), while saving a copy.
   # NOTE: no command substitution - that keeps live progress intact.
-  cat ralph_prompt.md | codex exec --dangerously-bypass-approvals-and-sandbox 2>&1 | tee "$log"
+  cat ralph_prompt.md | codex exec --full-auto 2>&1 | tee "$log"
 
   if grep -q "<promise>COMPLETE</promise>" "$log"; then
     echo "PRD complete, exiting."
-    tt notify "AI Hero CLI PRD complete after $i iterations"
+    tmsg notify "AI Hero CLI PRD complete after $i iterations"
     exit 0
   fi
 done
