@@ -9,7 +9,7 @@
 .claude/
 .codex/
 
-test_*.py
+_test_*.py
 
 docs/
 hidden/
