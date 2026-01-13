@@ -7,3 +7,9 @@
 - Testing: ruff format ingest.py main.py tests/test_sentence_stream.py; ruff check .; pytest
 - **Learnings for future iterations:** The EPUB spine includes nav documents that should be excluded from indexing to keep sentences clean.
 ---
+## 2026-01-13 18:57 - US-002
+- What was implemented: Added fixed-window chunk builder with 8-sentence window and 2-sentence overlap, plus coverage tests.
+- Files changed: ingest.py, tests/test_chunks.py, prd.json
+- Testing: ruff format ingest.py tests/test_chunks.py; ruff check .; pytest
+- **Learnings for future iterations:** Fixed-window chunking uses sentence indices to preserve deterministic [pos_start..pos_end] ranges.
+---

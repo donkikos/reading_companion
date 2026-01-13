@@ -56,6 +56,13 @@ class SentenceStreamItem:
     text: str
 
 
+@dataclass(frozen=True)
+class Chunk:
+    pos_start: int
+    pos_end: int
+    sentences: list[str]
+
+
 def extract_chapter_title(raw_content, chapter_index):
     chapter_title = f"Chapter {chapter_index + 1}"
     soup = BeautifulSoup(raw_content, "html.parser")
@@ -120,6 +127,27 @@ def build_sentence_stream(book, progress_callback=None):
         chapter_index += 1
 
     return stream, chapters
+
+
+def create_fixed_window_chunks(stream, window=8, overlap=2):
+    """Create fixed-window sentence chunks with overlap."""
+    if overlap < 0 or overlap >= window:
+        raise ValueError("overlap must be >= 0 and less than window")
+
+    if not stream:
+        return []
+
+    step = window - overlap
+    chunks = []
+    start = 0
+
+    while start < len(stream):
+        end = min(start + window, len(stream))
+        sentences = [item.text for item in stream[start:end]]
+        chunks.append(Chunk(start, end - 1, sentences))
+        start += step
+
+    return chunks
 
 
 def ingest_epub(epub_path, progress_callback=None):
