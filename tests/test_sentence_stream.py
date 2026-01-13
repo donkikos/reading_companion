@@ -56,3 +56,22 @@ def test_build_sentence_stream_is_ordered_and_contiguous(tmp_path):
         (0, "Chapter 1", 0, 1),
         (1, "Chapter 2", 2, 2),
     ]
+
+
+def test_build_sentence_stream_reports_progress(tmp_path):
+    book_path = _write_sample_book(tmp_path)
+    book = epub.read_epub(str(book_path))
+
+    updates = []
+
+    def record_progress(message, percent):
+        updates.append((message, percent))
+
+    build_sentence_stream(book, progress_callback=record_progress)
+
+    assert [percent for _, percent in updates] == [33, 66, 100]
+    assert [message for message, _ in updates] == [
+        "Processing Chapter 1",
+        "Processing Chapter 1",
+        "Processing Chapter 2",
+    ]

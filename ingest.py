@@ -93,13 +93,8 @@ def build_sentence_stream(book, progress_callback=None):
     seq_id = 0
     chapter_index = 0
 
-    spine_items = [
-        item for item in book.spine if is_spine_document(book.get_item_with_id(item[0]))
-    ]
-    total_items = len(spine_items)
-    processed_items = 0
-
-    for item_id, linear in book.spine:
+    chapter_sentences = []
+    for item_id, _linear in book.spine:
         item = book.get_item_with_id(item_id)
 
         if not is_spine_document(item):
@@ -108,29 +103,31 @@ def build_sentence_stream(book, progress_callback=None):
         raw_content = item.get_content()
         text = clean_html(raw_content)
         sentences = extract_sentences(text)
-        processed_items += 1
 
         if not sentences:
-            if progress_callback and total_items > 0:
-                percent = int((processed_items / total_items) * 100)
-                progress_callback("Processing", percent)
             continue
 
         chapter_title = extract_chapter_title(raw_content, chapter_index)
+        chapter_sentences.append((chapter_index, chapter_title, sentences))
+        chapter_index += 1
+
+    total_sentences = sum(len(sentences) for _, _, sentences in chapter_sentences)
+    processed_sentences = 0
+
+    for chapter_index, chapter_title, sentences in chapter_sentences:
         start_seq = seq_id
 
         for sentence in sentences:
             stream.append(SentenceStreamItem(seq_id, chapter_index, sentence))
             seq_id += 1
+            processed_sentences += 1
+
+            if progress_callback and total_sentences > 0:
+                percent = int((processed_sentences / total_sentences) * 100)
+                progress_callback(f"Processing {chapter_title}", percent)
 
         end_seq = seq_id - 1
         chapters.append((chapter_index, chapter_title, start_seq, end_seq))
-
-        if progress_callback and total_items > 0:
-            percent = int((processed_items / total_items) * 100)
-            progress_callback(f"Processing {chapter_title}", percent)
-
-        chapter_index += 1
 
     return stream, chapters
 
