@@ -4,6 +4,7 @@
 - Ingestion progress percentages are derived from total sentence counts computed before streaming.
 - Check Qdrant availability with `_ensure_qdrant_available` before collection operations to fail fast.
 - In ingestion tests, use fake Qdrant and Chroma clients to avoid external service dependencies.
+- Set `QDRANT_PATH` to use a local Qdrant store without a running server.
 
 ## 2026-01-13 18:56 - US-001
 - What was implemented: Added deterministic sentence stream builder with contiguous IDs and nav skipping; ingestion now uses it and added tests.
@@ -58,4 +59,10 @@
 - Files changed: tests/fixtures/minimal.epub, tests/test_ingestion_fixture.py, progress.txt, prd.json
 - Testing: ruff format tests/test_ingestion_fixture.py; ruff check .; pytest
 - **Learnings for future iterations:** Ingestion verification tests can rely on in-memory Qdrant/Chroma fakes to keep them deterministic and independent of external services.
+---
+## 2026-01-15 09:02 - US-010
+- What was implemented: Added delete endpoint that removes book files, SQLite records, Chroma docs, and Qdrant chunks; added library delete UI with confirmation and client-side removal; added tests and local Qdrant path support.
+- Files changed: main.py, db.py, ingest.py, static/script.js, static/style.css, tests/test_delete_book.py, prd.json, progress.txt
+- Testing: ruff format main.py db.py ingest.py tests/test_delete_book.py; ruff check .; pytest
+- **Learnings for future iterations:** QDRANT_PATH enables local Qdrant usage for dev workflows without a running server.
 ---

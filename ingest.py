@@ -16,6 +16,7 @@ QDRANT_VECTOR_DIM = int(os.getenv("QDRANT_VECTOR_DIM", "128"))
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_PATH = os.getenv("QDRANT_PATH")
 
 
 def get_file_hash(filepath):
@@ -204,6 +205,8 @@ def _get_qdrant_client():
     except ImportError as exc:
         raise RuntimeError("qdrant-client is required for Qdrant ingestion") from exc
 
+    if QDRANT_PATH:
+        return QdrantClient(path=QDRANT_PATH)
     if QDRANT_URL:
         return QdrantClient(url=QDRANT_URL)
     return QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)

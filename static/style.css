@@ -66,6 +66,26 @@ body {
     font-size: 0.9em;
 }
 
+.book-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.delete-btn {
+    background: #fff4f4;
+    border: 1px solid #e0b4b4;
+    color: #b73c3c;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background: #ffe6e6;
+}
+
 /* Reader View */
 #reader-view {
     height: 100vh;

@@ -29,6 +29,20 @@ function loadLibrary() {
                         ${posText}
                     </p>
                 `;
+
+                const actions = document.createElement('div');
+                actions.className = 'book-actions';
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.type = 'button';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    confirmDelete(book, card);
+                });
+                actions.appendChild(deleteBtn);
+                card.appendChild(actions);
+
                 card.onclick = () => openReader(book.hash, book.title);
                 list.appendChild(card);
             });
@@ -55,6 +69,34 @@ function uploadBook(e) {
         .catch(err => {
             console.error(err);
             list.innerHTML = 'Error starting upload.';
+        });
+}
+
+function confirmDelete(book, card) {
+    const confirmed = window.confirm(`Delete "${book.title}"? This cannot be undone.`);
+    if (!confirmed) {
+        return;
+    }
+
+    fetch(`/books/${book.hash}`, { method: 'DELETE' })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(payload => {
+                    throw new Error(payload.detail || 'Delete failed.');
+                });
+            }
+            return res.json();
+        })
+        .then(() => {
+            card.remove();
+            const list = document.getElementById('book-list');
+            if (!list.children.length) {
+                list.innerHTML = 'No books found.';
+            }
+        })
+        .catch(err => {
+            console.error("Delete Error:", err);
+            alert(err.message);
         });
 }
 

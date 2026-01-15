@@ -81,6 +81,31 @@ def get_book_details(book_hash: str):
     return details
 
 
+@app.delete("/books/{book_hash}")
+def delete_book(book_hash: str):
+    book = db.get_book(book_hash)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    try:
+        qdrant_client = ingest._get_qdrant_client()
+        ingest._ensure_qdrant_available(qdrant_client)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    ingest._delete_qdrant_book_chunks(
+        qdrant_client, ingest.QDRANT_COLLECTION, book_hash
+    )
+    collection.delete(where={"book_hash": book_hash})
+    db.delete_book_data(book_hash)
+
+    file_path = book.get("filepath")
+    if file_path and os.path.exists(file_path):
+        os.remove(file_path)
+
+    return {"ok": True, "book_id": book_hash}
+
+
 @app.post("/upload")
 async def upload_book(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     task_id = str(uuid.uuid4())

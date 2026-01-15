@@ -102,6 +102,17 @@ def delete_chapters(book_hash):
     conn.close()
 
 
+def delete_book_data(book_hash):
+    """Remove all database records for a book."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM reading_state WHERE book_hash = ?", (book_hash,))
+    cursor.execute("DELETE FROM chapters WHERE book_hash = ?", (book_hash,))
+    cursor.execute("DELETE FROM books WHERE hash = ?", (book_hash,))
+    conn.commit()
+    conn.close()
+
+
 def update_book_metadata(book_hash, title, author, filepath, total_sequences):
     """Update existing book metadata."""
     conn = sqlite3.connect(DB_PATH)
