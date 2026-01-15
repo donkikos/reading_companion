@@ -3,6 +3,7 @@ import chromadb
 import hashlib
 import ebooklib
 import os
+import uuid
 from dataclasses import dataclass
 from ebooklib import epub
 from bs4 import BeautifulSoup
@@ -268,7 +269,10 @@ def _build_qdrant_points(payloads, vector_dim):
 
     points = []
     for payload in payloads:
-        point_id = f"{payload['book_id']}:{payload['pos_start']}"
+        # Use deterministic UUIDs to satisfy Qdrant's point ID requirements.
+        point_id = uuid.uuid5(
+            uuid.NAMESPACE_URL, f"{payload['book_id']}:{payload['pos_start']}"
+        )
         vector = _hash_embedding(payload["text"], dim=vector_dim)
         points.append(qmodels.PointStruct(id=point_id, vector=vector, payload=payload))
     return points
