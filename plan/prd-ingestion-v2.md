@@ -127,11 +127,11 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 ### US-008: Single command to launch app + Qdrant
 
-**Description:** As a developer, I want a single command to start the app and Qdrant so ingestion can run without manual service setup.
+**Description:** As a developer, I want a single `docker compose` command to start the app and Qdrant so ingestion can run without manual service setup.
 
 **Acceptance Criteria:**
 
-- [ ] Provide one command that starts the FastAPI app and Qdrant.
+- [ ] Provide one `docker compose` command that starts the FastAPI app and Qdrant.
 - [ ] The command performs a health check that confirms the app responds and Qdrant is reachable.
 - [ ] The command exits cleanly and stops both services.
 - [ ] Restart the app server after implementing this story before running health checks.

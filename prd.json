@@ -139,9 +139,9 @@
     {
       "id": "US-008",
       "title": "Single command to launch app + Qdrant",
-      "description": "As a developer, I want a single command to start the app and Qdrant so ingestion can run without manual service setup.",
+      "description": "As a developer, I want a single `docker compose` command to start the app and Qdrant so ingestion can run without manual service setup.",
       "acceptanceCriteria": [
-        "Provide one command that starts the FastAPI app and Qdrant.",
+        "Provide one `docker compose` command that starts the FastAPI app and Qdrant.",
         "The command performs a health check that confirms the app responds and Qdrant is reachable.",
         "The command exits cleanly and stops both services.",
         "Restart the app server after implementing this story before running health checks.",
