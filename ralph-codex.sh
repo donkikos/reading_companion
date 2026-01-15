@@ -21,7 +21,7 @@ for ((i=1; i<=$1; i++)); do
 
   if grep -q "<promise>COMPLETE</promise>" "$log"; then
     echo "PRD complete, exiting."
-    tmsg notify "AI Hero CLI PRD complete after $i iterations"
+    tmsg notify "PRD complete after $i iterations"
     exit 0
   fi
 done
