@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+    volumes:
+      - ./.data:/app/.data
+    depends_on:
+      qdrant:
+        condition: service_started
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  healthcheck:
+    image: python:3.11-slim
+    depends_on:
+      - app
+      - qdrant
+    environment:
+      APP_URL: http://app:8000/books
+      QDRANT_URL: http://qdrant:6333/healthz
+    volumes:
+      - ./scripts/compose_healthcheck.py:/healthcheck/compose_healthcheck.py:ro
+    command: ["python", "/healthcheck/compose_healthcheck.py"]
+
+volumes:
+  qdrant_data:
