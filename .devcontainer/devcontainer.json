@@ -1,0 +1,13 @@
+{
+  "name": "epub_ai_reader_ralph",
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "../docker-compose.dev.yml"
+  ],
+  "service": "codex",
+  "workspaceFolder": "/app",
+  "overrideCommand": true,
+  "shutdownAction": "stopCompose",
+  "remoteUser": "root",
+  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt"
+}

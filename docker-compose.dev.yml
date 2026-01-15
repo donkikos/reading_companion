@@ -1,0 +1,15 @@
+services:
+  codex:
+    build:
+      context: .
+      dockerfile: Dockerfile.codex
+    image: epub_ai_reader_ralph_codex
+    working_dir: /app
+    environment:
+      CODEX_HOME: /app/.codex
+    volumes:
+      - ./:/app
+      - ./.codex:/app/.codex
+      - /Users/tigran/.codex/auth.json:/app/.codex/auth.json:ro
+    stdin_open: true
+    tty: true

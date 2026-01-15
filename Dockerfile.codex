@@ -1,0 +1,13 @@
+FROM epub_ai_reader_ralph_app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+  && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+  && apt-get install -y --no-install-recommends nodejs \
+  && npm install -g @openai/codex \
+  && npx -y playwright@latest install --with-deps chromium \
+  && npm cache clean --force \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV CODEX_HOME=/app/.codex
+WORKDIR /app
