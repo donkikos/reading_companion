@@ -3,6 +3,7 @@
 - On re-ingest, clear existing Chroma docs, chapters, and Qdrant chunks by `book_id` before reindexing.
 - Ingestion progress percentages are derived from total sentence counts computed before streaming.
 - Check Qdrant availability with `_ensure_qdrant_available` before collection operations to fail fast.
+- In ingestion tests, use fake Qdrant and Chroma clients to avoid external service dependencies.
 
 ## 2026-01-13 18:56 - US-001
 - What was implemented: Added deterministic sentence stream builder with contiguous IDs and nav skipping; ingestion now uses it and added tests.
@@ -51,4 +52,10 @@
 - Files changed: Dockerfile, docker-compose.yml, scripts/compose_healthcheck.py, tests/test_docker_compose.py, prd.json
 - Testing: ruff format scripts/compose_healthcheck.py tests/test_docker_compose.py; ruff check .; pytest
 - **Learnings for future iterations:** Compose health checks can be enforced by a short-lived healthcheck service that polls app + Qdrant and exits with status.
+---
+## 2026-01-15 08:43 - US-009
+- What was implemented: Added a deterministic ASCII-only EPUB fixture and an ingestion test that indexes it and verifies chunk counts via the verification API using fake Qdrant/Chroma.
+- Files changed: tests/fixtures/minimal.epub, tests/test_ingestion_fixture.py, progress.txt, prd.json
+- Testing: ruff format tests/test_ingestion_fixture.py; ruff check .; pytest
+- **Learnings for future iterations:** Ingestion verification tests can rely on in-memory Qdrant/Chroma fakes to keep them deterministic and independent of external services.
 ---
