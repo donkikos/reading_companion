@@ -59,3 +59,27 @@ def test_delete_book_removes_data(monkeypatch, tmp_path):
     assert db.get_chapters_list(book_hash) == []
     assert db.get_cursor(book_hash) == 0
     assert not Path(str(epub_path)).exists()
+
+
+def test_reingest_updates_path_when_final_exists(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    book_hash = "book123"
+    temp_path = tmp_path / "temp.epub"
+    temp_path.write_bytes(b"temp")
+    final_path = tmp_path / f"{book_hash}.epub"
+    final_path.write_bytes(b"existing")
+
+    db.add_book(book_hash, "Title", "Author", str(temp_path), 10)
+    fake_collection = _FakeCollection()
+    monkeypatch.setattr(main, "collection", fake_collection)
+    monkeypatch.setattr(ingest, "ingest_epub", lambda *_args, **_kwargs: book_hash)
+
+    main.BOOKS_DIR = str(tmp_path)
+    main.tasks["task-1"] = {}
+    main.run_ingestion_task("task-1", str(temp_path))
+
+    assert db.get_book(book_hash)["filepath"] == str(final_path)
+    assert not temp_path.exists()
