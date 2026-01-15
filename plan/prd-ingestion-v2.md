@@ -178,6 +178,26 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - [ ] Typecheck/lint passes
 - [ ] Verify in browser using MCP
 
+### US-011: Improve ingestion progress feedback
+
+**Description:** As a reader, I want more informative ingestion progress so I understand what the system is doing and whether it is still working.
+
+**Acceptance Criteria:**
+
+- [ ] Progress messages include clear stages beyond sentence parsing (e.g., "Indexing chunks", "Upserting Qdrant", "Saving metadata").
+- [ ] The progress percentage reflects the full ingestion pipeline, not only sentence streaming.
+- [ ] If a model download or warm-up step is happening, the UI shows an explicit message that this is expected on first run.
+- [ ] The task status returns "completed" only after all storage (Chroma, Qdrant, SQLite) work is finished.
+- [ ] Cancelling or failing a stage should surface a clear error message.
+- [ ] Restart the app server after implementing this story before verifying the UI.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+- [ ] Verify in browser using MCP
+
 ## Functional Requirements
 
 - FR-1: The system must parse EPUBs into a deterministic global sentence stream.
