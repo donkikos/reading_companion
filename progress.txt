@@ -40,3 +40,9 @@
 - Testing: ruff format ingest.py tests/test_qdrant_payloads.py; ruff check .; pytest
 - **Learnings for future iterations:** Guard Qdrant operations with an explicit availability check to avoid silent partial ingestion.
 ---
+## 2026-01-15 07:07 - US-007
+- What was implemented: Added an ingestion verification API that recomputes expected chunks, checks Qdrant counts, and validates sample payloads; added endpoint tests.
+- Files changed: main.py, tests/test_verify_ingestion.py, prd.json
+- Testing: ruff format main.py tests/test_verify_ingestion.py; ruff check .; pytest
+- **Learnings for future iterations:** Verification uses Qdrant count + sample scroll to validate payload integrity and monotonic positions.
+---
