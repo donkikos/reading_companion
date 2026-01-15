@@ -47,15 +47,14 @@ def run_ingestion_task(task_id: str, file_path: str):
     try:
         book_hash = ingest.ingest_epub(file_path, progress_callback=update_progress)
 
-        # Rename file to hash
+        # Rename file to hash and always persist the final path.
         final_path = os.path.join(BOOKS_DIR, f"{book_hash}.epub")
-        if not os.path.exists(final_path):
-            os.rename(file_path, final_path)
-            db.update_book_path(book_hash, final_path)
-        else:
-            # Cleanup temp if duplicate
-            if os.path.exists(file_path):
+        if os.path.exists(file_path):
+            if os.path.exists(final_path):
                 os.remove(file_path)
+            else:
+                os.rename(file_path, final_path)
+        db.update_book_path(book_hash, final_path)
 
         tasks[task_id]["status"] = "completed"
         tasks[task_id]["book_hash"] = book_hash
