@@ -1,4 +1,7 @@
 services:
+  app:
+    image: epub_ai_reader_ralph_app
+
   codex:
     build:
       context: .
