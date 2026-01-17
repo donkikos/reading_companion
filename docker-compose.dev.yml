@@ -12,7 +12,6 @@ services:
       CODEX_HOME: /app/.codex
     volumes:
       - ./:/app
-      - ./.codex:/app/.codex
       - /Users/tigran/.codex/auth.json:/app/.codex/auth.json:ro
     stdin_open: true
     tty: true
