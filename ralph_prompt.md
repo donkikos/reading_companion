@@ -106,3 +106,4 @@ If there are still stories with `passes: false`, end your response normally (ano
 - Commit frequently
 - Keep CI green
 - Read the Codebase Patterns section in progress.txt before starting
+- Avoid launching nested containers; if running inside a container, do not invoke Docker for service checks.
