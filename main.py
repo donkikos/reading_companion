@@ -39,6 +39,7 @@ class VerifyIngestionRequest(BaseModel):
 def run_ingestion_task(task_id: str, file_path: str):
     tasks[task_id]["status"] = "processing"
     tasks[task_id]["progress"] = 0
+    tasks[task_id]["message"] = "Starting..."
 
     def update_progress(msg, percent):
         tasks[task_id]["message"] = msg
@@ -59,10 +60,12 @@ def run_ingestion_task(task_id: str, file_path: str):
         tasks[task_id]["status"] = "completed"
         tasks[task_id]["book_hash"] = book_hash
         tasks[task_id]["progress"] = 100
+        tasks[task_id]["message"] = "Completed"
 
     except Exception as e:
         tasks[task_id]["status"] = "error"
         tasks[task_id]["error"] = str(e)
+        tasks[task_id]["message"] = "Error"
         if os.path.exists(file_path):
             os.remove(file_path)
 

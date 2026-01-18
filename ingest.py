@@ -27,6 +27,49 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "BAAI/bge-base-en-v1.5")
 _RAW_OLLAMA_EMBED_DIM = os.getenv("OLLAMA_EMBED_DIM")
 OLLAMA_EMBED_DIM = int(_RAW_OLLAMA_EMBED_DIM) if _RAW_OLLAMA_EMBED_DIM else None
 
+INGESTION_STAGES = (
+    ("hashing", "Hashing...", 5),
+    ("parsing", "Parsing...", 35),
+    ("chunking", "Chunking...", 10),
+    ("embedding", "Embedding...", 20),
+    ("qdrant", "Qdrant upsert...", 20),
+    ("metadata", "Metadata save...", 10),
+)
+
+
+def _build_stage_ranges():
+    ranges = {}
+    start = 0
+    for key, label, weight in INGESTION_STAGES:
+        end = start + weight
+        ranges[key] = (start, end, label)
+        start = end
+    if start != 100:
+        raise ValueError("INGESTION_STAGES must sum to 100")
+    return ranges
+
+
+INGESTION_STAGE_RANGES = _build_stage_ranges()
+
+
+class IngestionProgress:
+    def __init__(self, callback):
+        self._callback = callback
+        self._last_percent = -1
+
+    def stage(self, stage_key, stage_percent, message=None):
+        if not self._callback:
+            return
+
+        start, end, default_label = INGESTION_STAGE_RANGES[stage_key]
+        stage_percent = max(0, min(100, stage_percent))
+        overall = start + ((end - start) * (stage_percent / 100))
+        overall = int(round(overall))
+        if overall < self._last_percent:
+            overall = self._last_percent
+        self._last_percent = overall
+        self._callback(message or default_label, overall)
+
 
 def get_file_hash(filepath):
     """Calculate SHA256 hash of a file."""
@@ -362,18 +405,17 @@ def _build_qdrant_points(payloads, vector_dim):
 def ingest_epub(epub_path, progress_callback=None):
     """Parse EPUB, tokenize sentences, and store in ChromaDB & SQLite."""
     print(f"Ingesting: {epub_path}")
+    progress = IngestionProgress(progress_callback)
 
     # 1. Hashing and Deduplication
-    if progress_callback:
-        progress_callback("Hashing...", 0)
+    progress.stage("hashing", 0)
     book_hash = get_file_hash(epub_path)
+    progress.stage("hashing", 100)
 
     existing = db.get_book(book_hash)
     is_reingest = existing is not None
     if is_reingest:
         print(f"Re-ingesting existing book: {existing['title']} ({book_hash})")
-        if progress_callback:
-            progress_callback("Re-indexing...", 0)
 
     try:
         book = epub.read_epub(epub_path)
@@ -409,20 +451,34 @@ def ingest_epub(epub_path, progress_callback=None):
         collection.delete(where={"book_hash": book_hash})
         db.delete_chapters(book_hash)
 
-    stream, chapters = build_sentence_stream(book, progress_callback)
+    progress.stage("parsing", 0)
 
+    def parsing_progress(message, percent):
+        detail = message.replace("Processing ", "")
+        progress.stage("parsing", percent, message=f"Parsing {detail}")
+
+    stream, chapters = build_sentence_stream(book, parsing_progress)
+    progress.stage("parsing", 100)
+
+    progress.stage("chunking", 0)
     chunks = create_fixed_window_chunks(stream)
+    progress.stage("chunking", 100)
     chunk_payloads = build_chunk_payloads(book_hash, stream, chunks)
 
     if chunk_payloads:
         qdrant_client = _get_qdrant_client()
         _ensure_qdrant_available(qdrant_client)
+        progress.stage("embedding", 0)
         points, vector_dim = _build_qdrant_points(chunk_payloads, QDRANT_VECTOR_DIM)
+        progress.stage("embedding", 100)
         _ensure_qdrant_collection(qdrant_client, QDRANT_COLLECTION, vector_dim)
         if is_reingest:
             _delete_qdrant_book_chunks(qdrant_client, QDRANT_COLLECTION, book_hash)
+        progress.stage("qdrant", 0)
         qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=points)
+        progress.stage("qdrant", 100)
 
+    progress.stage("metadata", 0)
     for item in stream:
         ids.append(f"{book_hash}_{item.seq_id}")
         documents.append(item.text)
@@ -460,8 +516,7 @@ def ingest_epub(epub_path, progress_callback=None):
     if not is_reingest:
         db.update_cursor(book_hash, 0)
 
-    if progress_callback:
-        progress_callback("Completed", 100)
+    progress.stage("metadata", 100)
 
     print(f"Finished ingesting. ID: {book_hash}. Total sequences: {len(stream)}")
     return book_hash
