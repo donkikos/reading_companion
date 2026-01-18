@@ -4,6 +4,10 @@ set -euo pipefail
 if [[ -f /.dockerenv ]] || [[ "${IN_CONTAINER:-}" == "1" ]]; then
   # Running inside the dev container.
   export CODEX_HOME="${CODEX_HOME:-/app/.codex}"
+  : "${GIT_AUTHOR_NAME:=Ralph Codex}"
+  : "${GIT_COMMITTER_NAME:=$GIT_AUTHOR_NAME}"
+  : "${GIT_AUTHOR_EMAIL:=ralph-codex@local}"
+  : "${GIT_COMMITTER_EMAIL:=$GIT_AUTHOR_EMAIL}"
 
   if [[ $# -lt 1 ]]; then
     echo "Usage: $0 <iteration> [timestamp]"

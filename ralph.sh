@@ -10,6 +10,10 @@ PRD_FILE="$SCRIPT_DIR/prd.json"
 PROGRESS_FILE="$SCRIPT_DIR/progress.txt"
 ARCHIVE_DIR="$SCRIPT_DIR/archive"
 LAST_BRANCH_FILE="$SCRIPT_DIR/.last-branch"
+: "${GIT_AUTHOR_NAME:=Ralph Codex}"
+: "${GIT_COMMITTER_NAME:=$GIT_AUTHOR_NAME}"
+: "${GIT_AUTHOR_EMAIL:=ralph-codex@local}"
+: "${GIT_COMMITTER_EMAIL:=$GIT_AUTHOR_EMAIL}"
 
 # Archive previous run if branch changed
 if [ -f "$PRD_FILE" ] && [ -f "$LAST_BRANCH_FILE" ]; then

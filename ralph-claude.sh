@@ -8,6 +8,11 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 
+: "${GIT_AUTHOR_NAME:=Ralph Claude}"
+: "${GIT_COMMITTER_NAME:=$GIT_AUTHOR_NAME}"
+: "${GIT_AUTHOR_EMAIL:=ralph-claude@local}"
+: "${GIT_COMMITTER_EMAIL:=$GIT_AUTHOR_EMAIL}"
+
 mkdir -p .claude/logs
 
 for ((i=1; i<=$1; i++)); do
