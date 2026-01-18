@@ -221,6 +221,7 @@
         "Optional embedding dimensions are configurable (when supported by Ollama).",
         "If the embedding service is unavailable, ingestion fails with a clear error.",
         "Ollama runs as a docker compose service and uses a volume for model storage.",
+        "Add local Ollama model cache paths to `.gitignore`.",
         "Run `ruff format` on changed Python files (line length 100)",
         "Run `ruff check .` and ensure it passes",
         "Add or update tests for this change",

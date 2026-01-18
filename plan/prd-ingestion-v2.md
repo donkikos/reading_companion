@@ -212,6 +212,7 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - [ ] Optional embedding dimensions are configurable (when supported by Ollama).
 - [ ] If the embedding service is unavailable, ingestion fails with a clear error.
 - [ ] Ollama runs as a docker compose service and uses a volume for model storage.
+- [ ] Add local Ollama model cache paths to `.gitignore`.
 - [ ] Run `ruff format` on changed Python files (line length 100)
 - [ ] Run `ruff check .` and ensure it passes
 - [ ] Add or update tests for this change
@@ -322,6 +323,7 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - Track ingestion progress as a best-effort percentage (e.g., sentences processed / total).
 - Dependencies include `qdrant-client`.
 - Qdrant must be available locally for ingestion runs.
+- Add local Ollama model cache paths to `.gitignore` to avoid committing downloads.
 - Restart the app server after implementing new features so new routes and logic are loaded.
 - Verification should recompute chunk counts from the sentence stream rather than relying on stored counts.
 - Use `tests/fixtures/minimal.epub` as the deterministic ingestion fixture for tests.
