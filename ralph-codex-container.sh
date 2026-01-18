@@ -6,28 +6,27 @@ if [[ -f /.dockerenv ]] || [[ "${IN_CONTAINER:-}" == "1" ]]; then
   export CODEX_HOME="${CODEX_HOME:-/app/.codex}"
 
   if [[ $# -lt 1 ]]; then
-    echo "Usage: $0 <iterations>"
+    echo "Usage: $0 <iteration> [timestamp]"
     exit 1
   fi
 
-  timestamp=$(date +"%Y%m%d_%H%M%S")
+  iteration="$1"
+  timestamp="${2:-$(date +"%Y%m%d_%H%M%S")}"
 
   mkdir -p .codex/logs
 
-  for ((i=1; i<=$1; i++)); do
-    echo "=== Iteration $i ==="
+  echo "=== Iteration $iteration ==="
 
-    log=".codex/logs/codex_iteration_${i}_${timestamp}.txt"
+  log=".codex/logs/codex_iteration_${iteration}_${timestamp}.txt"
 
-    # Run Codex with live streaming output (stdout+stderr), while saving a copy.
-    # NOTE: no command substitution - that keeps live progress intact.
-    cat ralph_prompt.md | codex exec --dangerously-bypass-approvals-and-sandbox 2>&1 | tee "$log"
+  # Run Codex with live streaming output (stdout+stderr), while saving a copy.
+  # NOTE: no command substitution - that keeps live progress intact.
+  cat ralph_prompt.md | codex exec --dangerously-bypass-approvals-and-sandbox 2>&1 | tee "$log"
 
-    if grep -q "<promise>COMPLETE</promise>" "$log"; then
-      echo "PRD complete, exiting."
-      exit 0
-    fi
-  done
+  if grep -q "<promise>COMPLETE</promise>" "$log"; then
+    echo "PRD complete, exiting."
+    exit 0
+  fi
 
   exit 0
 fi
@@ -44,7 +43,25 @@ fi
 if ! docker image inspect epub_ai_reader_ralph_codex >/dev/null 2>&1; then
   docker compose -f docker-compose.yml -f docker-compose.dev.yml build codex
 fi
-docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm codex ./ralph-codex-container.sh "$@"
+
+iterations="$1"
+timestamp=$(date +"%Y%m%d_%H%M%S")
+
+for ((i=1; i<=iterations; i++)); do
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm codex ./ralph-codex-container.sh "$i" "$timestamp"
+
+  if command -v tmsg >/dev/null 2>&1; then
+    tmsg "Ralph Codex iteration $i completed."
+  fi
+
+  log=".codex/logs/codex_iteration_${i}_${timestamp}.txt"
+  if [[ -f "$log" ]] && grep -q "<promise>COMPLETE</promise>" "$log"; then
+    if command -v tmsg >/dev/null 2>&1; then
+      tmsg "PRD complete, exiting."
+    fi
+    exit 0
+  fi
+done
 
 if command -v tmsg >/dev/null 2>&1; then
   tmsg "Ralph Codex container run completed."
