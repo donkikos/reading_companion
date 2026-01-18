@@ -68,9 +68,17 @@ def test_ingest_fixture_and_verify_qdrant(monkeypatch, tmp_path):
 
     monkeypatch.setattr(ingest, "chroma_client", _FakeChromaClient())
 
-    fake_qdrant = _FakeQdrantClient(ingest.QDRANT_VECTOR_DIM)
+    vector_dim = ingest.QDRANT_VECTOR_DIM or 8
+    fake_qdrant = _FakeQdrantClient(vector_dim)
     monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
     monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+    monkeypatch.setattr(
+        ingest,
+        "_ollama_embed",
+        lambda texts, **_kwargs: [
+            ingest._hash_embedding(text, dim=vector_dim) for text in texts
+        ],
+    )
 
     fixture_path = Path(__file__).parent / "fixtures" / "minimal.epub"
     book_id = ingest.ingest_epub(str(fixture_path))

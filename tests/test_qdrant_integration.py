@@ -33,10 +33,16 @@ def test_qdrant_upsert_accepts_point_ids():
     }
 
     try:
-        ingest._ensure_qdrant_collection(
-            client, collection_name, ingest.QDRANT_VECTOR_DIM
-        )
-        points = ingest._build_qdrant_points([payload], ingest.QDRANT_VECTOR_DIM)
+        vector_dim = ingest.QDRANT_VECTOR_DIM or 8
+        ingest._ensure_qdrant_collection(client, collection_name, vector_dim)
+
+        def fake_embed(texts, **_kwargs):
+            return [ingest._hash_embedding(text, dim=vector_dim) for text in texts]
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(ingest, "_ollama_embed", fake_embed)
+            points, resolved_dim = ingest._build_qdrant_points([payload], vector_dim)
+        assert resolved_dim == vector_dim
         client.upsert(collection_name=collection_name, points=points)
         count = client.count(collection_name=collection_name, exact=True)
         assert count.count == 1

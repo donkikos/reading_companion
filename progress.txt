@@ -5,6 +5,7 @@
 - Check Qdrant availability with `_ensure_qdrant_available` before collection operations to fail fast.
 - In ingestion tests, use fake Qdrant and Chroma clients to avoid external service dependencies.
 - Set `QDRANT_PATH` to use a local Qdrant store without a running server.
+- Use Ollama `/api/embed` with `OLLAMA_BASE_URL`/`OLLAMA_MODEL` and optional `OLLAMA_EMBED_DIM` for embeddings.
 
 ## 2026-01-13 18:56 - US-001
 - What was implemented: Added deterministic sentence stream builder with contiguous IDs and nav skipping; ingestion now uses it and added tests.
@@ -65,4 +66,10 @@
 - Files changed: main.py, db.py, ingest.py, static/script.js, static/style.css, tests/test_delete_book.py, prd.json, progress.txt
 - Testing: ruff format main.py db.py ingest.py tests/test_delete_book.py; ruff check .; pytest
 - **Learnings for future iterations:** QDRANT_PATH enables local Qdrant usage for dev workflows without a running server.
+---
+## 2026-01-18 08:48 - US-012
+- What was implemented: Added Ollama embedding client and wired ingestion to call `/api/embed` with configurable model/base URL/dim; updated Qdrant point building; added Ollama compose service and tests covering embedding responses/errors.
+- Files changed: ingest.py, docker-compose.yml, tests/test_ingestion_fixture.py, tests/test_qdrant_integration.py, tests/test_ollama_embed.py, prd.json, progress.txt
+- Testing: ruff format ingest.py tests/test_ingestion_fixture.py tests/test_qdrant_integration.py tests/test_ollama_embed.py; ruff check .; pytest
+- **Learnings for future iterations:** Ollama embedding calls require alignment between returned vector length and Qdrant collection size.
 ---

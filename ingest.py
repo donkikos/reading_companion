@@ -2,8 +2,11 @@ import spacy
 import chromadb
 import hashlib
 import ebooklib
+import json
 import os
 import uuid
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from ebooklib import epub
 from bs4 import BeautifulSoup
@@ -13,11 +16,16 @@ import db
 _NLP = None
 chroma_client = chromadb.PersistentClient(path=".data/chroma_db")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "book_chunks")
-QDRANT_VECTOR_DIM = int(os.getenv("QDRANT_VECTOR_DIM", "128"))
+_RAW_QDRANT_VECTOR_DIM = os.getenv("QDRANT_VECTOR_DIM")
+QDRANT_VECTOR_DIM = int(_RAW_QDRANT_VECTOR_DIM) if _RAW_QDRANT_VECTOR_DIM else None
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_PATH = os.getenv("QDRANT_PATH")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "BAAI/bge-base-en-v1.5")
+_RAW_OLLAMA_EMBED_DIM = os.getenv("OLLAMA_EMBED_DIM")
+OLLAMA_EMBED_DIM = int(_RAW_OLLAMA_EMBED_DIM) if _RAW_OLLAMA_EMBED_DIM else None
 
 
 def get_file_hash(filepath):
@@ -177,7 +185,7 @@ def build_chunk_payloads(book_id, stream, chunks):
     return payloads
 
 
-def _hash_embedding(text, dim=QDRANT_VECTOR_DIM):
+def _hash_embedding(text, dim):
     """Deterministic fallback embedding derived from full text."""
     if dim <= 0:
         raise ValueError("Embedding dimension must be positive")
@@ -198,6 +206,57 @@ def _hash_embedding(text, dim=QDRANT_VECTOR_DIM):
             values.append((value / 2**32) * 2 - 1)
         counter += 1
     return values
+
+
+def _ollama_embed(texts, model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL, dimensions=None):
+    if isinstance(texts, str):
+        texts = [texts]
+
+    if not texts:
+        return []
+
+    payload = {"model": model, "input": texts}
+    if dimensions is not None:
+        payload["options"] = {"embedding_length": dimensions}
+
+    url = f"{base_url.rstrip('/')}/api/embed"
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url, data=data, headers={"Content-Type": "application/json"}
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            body = response.read()
+    except urllib.error.HTTPError as exc:
+        message = exc.read().decode("utf-8") if exc.fp else ""
+        raise RuntimeError(
+            f"Ollama embedding request failed ({exc.code}): {message}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(
+            "Ollama embedding service is unavailable; ingestion cannot proceed."
+        ) from exc
+
+    result = json.loads(body)
+    embeddings = result.get("embeddings") or result.get("embedding")
+    if embeddings is None:
+        raise RuntimeError("Ollama embedding response missing embeddings.")
+
+    if embeddings and isinstance(embeddings[0], (int, float)):
+        embeddings = [embeddings]
+
+    if len(embeddings) != len(texts):
+        raise RuntimeError("Ollama embedding response length mismatch.")
+
+    if dimensions is not None:
+        for vector in embeddings:
+            if len(vector) != dimensions:
+                raise ValueError(
+                    f"Ollama embedding dimension mismatch: {len(vector)} != {dimensions}"
+                )
+
+    return embeddings
 
 
 def _get_qdrant_client():
@@ -267,15 +326,33 @@ def _delete_qdrant_book_chunks(client, collection_name, book_id):
 def _build_qdrant_points(payloads, vector_dim):
     from qdrant_client.http import models as qmodels
 
+    if not payloads:
+        return [], vector_dim
+
+    texts = [payload["text"] for payload in payloads]
+    embeddings = _ollama_embed(texts, dimensions=vector_dim or OLLAMA_EMBED_DIM)
+    if not embeddings:
+        raise RuntimeError("Ollama embeddings are empty.")
+
+    resolved_dim = len(embeddings[0])
+    for vector in embeddings:
+        if len(vector) != resolved_dim:
+            raise ValueError("Ollama returned inconsistent embedding dimensions.")
+
+    if vector_dim is not None and resolved_dim != vector_dim:
+        raise ValueError(
+            f"Ollama embedding dimension {resolved_dim} does not match "
+            f"Qdrant vector size {vector_dim}"
+        )
+
     points = []
-    for payload in payloads:
+    for payload, vector in zip(payloads, embeddings):
         # Use deterministic UUIDs to satisfy Qdrant's point ID requirements.
         point_id = uuid.uuid5(
             uuid.NAMESPACE_URL, f"{payload['book_id']}:{payload['pos_start']}"
         )
-        vector = _hash_embedding(payload["text"], dim=vector_dim)
         points.append(qmodels.PointStruct(id=point_id, vector=vector, payload=payload))
-    return points
+    return points, resolved_dim
 
 
 def ingest_epub(epub_path, progress_callback=None):
@@ -336,10 +413,10 @@ def ingest_epub(epub_path, progress_callback=None):
     if chunk_payloads:
         qdrant_client = _get_qdrant_client()
         _ensure_qdrant_available(qdrant_client)
-        _ensure_qdrant_collection(qdrant_client, QDRANT_COLLECTION, QDRANT_VECTOR_DIM)
+        points, vector_dim = _build_qdrant_points(chunk_payloads, QDRANT_VECTOR_DIM)
+        _ensure_qdrant_collection(qdrant_client, QDRANT_COLLECTION, vector_dim)
         if is_reingest:
             _delete_qdrant_book_chunks(qdrant_client, QDRANT_COLLECTION, book_hash)
-        points = _build_qdrant_points(chunk_payloads, QDRANT_VECTOR_DIM)
         qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=points)
 
     for item in stream:
