@@ -13,7 +13,7 @@ This should be the one YOU decide has the highest priority - not necessarily the
 6. Run quality checks (e.g., typecheck, lint, test - use whatever your project requires)
 7. Update AGENTS.md files if you discover reusable patterns (see below)
 8. If checks pass, commit ALL changes with message: `feat: [Story ID] - [Story Title]`
-9. Update the PRD to set `passes: true` for the completed story
+9. Only after ALL acceptance-criteria checklist items for the story are explicitly verified as completed (including required browser verification, if applicable) AND all quality checks pass, update the PRD to set `passes: true` for the completed story
 10. Append your progress to `progress.txt`
 
 ## Progress Report Format
@@ -94,7 +94,7 @@ A frontend story is NOT complete until browser verification passes.
 
 After completing a user story, check if ALL stories have `passes: true`.
 
-If ALL stories within the PRD (prd.json) are complete and passing, reply with:
+If ALL stories within the PRD (prd.json) are complete and passing (and each has all acceptance criteria verified), reply with:
 <promise> + COMPLETE + </promise> (concatenate exactly, no spaces)
 
 If there are still stories with `passes: false`, end your response normally (another iteration will pick up the next story).
