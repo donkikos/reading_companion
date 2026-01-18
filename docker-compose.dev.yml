@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile.codex
     image: epub_ai_reader_ralph_codex
     working_dir: /app
+    init: true
     environment:
       CODEX_HOME: /app/.codex
       QDRANT_HOST: qdrant
