@@ -8,7 +8,7 @@ You are an autonomous coding agent working on a software project.
 2. Read the progress log at `progress.txt` (check Codebase Patterns section first)
 3. Check you're on the correct branch from PRD `branchName`. If not, check it out or create from branch `dev`. If `dev` branch does not exist, then check it out or create from branch `main`.
 4. Pick the **highest priority** user where `passes: false`
-This should be the one YOU decide has the highest priority - not necessarily the first in the list.
+If priority field is missing from user story, this should be the one YOU decide has the highest priority - not necessarily the first in the list that is `passes: false`.
 5. Implement that single user story
 6. Run quality checks (e.g., typecheck, lint, test - use whatever your project requires)
 7. Update AGENTS.md files if you discover reusable patterns (see below)

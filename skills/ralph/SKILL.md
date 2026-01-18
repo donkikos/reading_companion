@@ -32,7 +32,7 @@ Take a PRD (markdown file or text) and convert it to `prd.json` in your ralph di
         "Criterion 2",
         "Typecheck passes"
       ],
-      "priority": 1,
+      "priority": "high",
       "passes": false,
       "notes": ""
     }
@@ -65,7 +65,8 @@ Ralph spawns a fresh agent instance per iteration with no memory of previous wor
 
 ## Story Ordering: Dependencies First
 
-Stories execute in priority order. Earlier stories must not depend on later ones.
+Stories execute in priority order. Use
+`priority` to signal urgency (high/medium/low).
 
 **Correct order:**
 1. Schema/database changes (migrations)
@@ -119,7 +120,7 @@ Frontend stories are NOT complete until visually verified. Ralph will use the de
 
 1. **Each user story becomes one JSON entry**
 2. **IDs**: Sequential (US-001, US-002, etc.)
-3. **Priority**: Based on dependency order, then document order
+3. **Priority**: Use "high" | "medium" | "low" (default to "medium" unless urgency is clear)
 4. **All stories**: `passes: false` and empty `notes`
 5. **branchName**: Derive from feature name, kebab-case, prefixed with `ralph/`
 6. **Always add**: "Typecheck passes" to every story's acceptance criteria
@@ -176,7 +177,7 @@ Add ability to mark tasks with different statuses.
         "Generate and run migration successfully",
         "Typecheck passes"
       ],
-      "priority": 1,
+      "priority": "high",
       "passes": false,
       "notes": ""
     },
@@ -190,7 +191,7 @@ Add ability to mark tasks with different statuses.
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 2,
+      "priority": "medium",
       "passes": false,
       "notes": ""
     },
@@ -205,7 +206,7 @@ Add ability to mark tasks with different statuses.
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 3,
+      "priority": "medium",
       "passes": false,
       "notes": ""
     },
@@ -219,7 +220,7 @@ Add ability to mark tasks with different statuses.
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 4,
+      "priority": "low",
       "passes": false,
       "notes": ""
     }

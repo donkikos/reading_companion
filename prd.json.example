@@ -12,7 +12,7 @@
         "Generate and run migration successfully",
         "Typecheck passes"
       ],
-      "priority": 1,
+      "priority": "high",
       "passes": false,
       "notes": ""
     },
@@ -26,7 +26,7 @@
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 2,
+      "priority": "medium",
       "passes": false,
       "notes": ""
     },
@@ -41,7 +41,7 @@
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 3,
+      "priority": "medium",
       "passes": false,
       "notes": ""
     },
@@ -56,7 +56,7 @@
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 4,
+      "priority": "low",
       "passes": false,
       "notes": ""
     }

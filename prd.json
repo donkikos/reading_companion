@@ -17,7 +17,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 1,
       "passes": true,
       "notes": ""
     },
@@ -36,7 +35,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 2,
       "passes": true,
       "notes": ""
     },
@@ -55,7 +53,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 3,
       "passes": true,
       "notes": ""
     },
@@ -73,7 +70,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 4,
       "passes": true,
       "notes": ""
     },
@@ -91,7 +87,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 5,
       "passes": true,
       "notes": ""
     },
@@ -109,7 +104,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 6,
       "passes": true,
       "notes": ""
     },
@@ -132,7 +126,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 7,
       "passes": true,
       "notes": ""
     },
@@ -152,7 +145,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 8,
       "passes": true,
       "notes": ""
     },
@@ -172,7 +164,6 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 9,
       "passes": true,
       "notes": ""
     },
@@ -194,7 +185,6 @@
         "Typecheck/lint passes",
         "Verify in browser using MCP"
       ],
-      "priority": 10,
       "passes": true,
       "notes": ""
     },
@@ -217,9 +207,9 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 11,
       "passes": false,
-      "notes": ""
+      "notes": "",
+      "priority": "medium"
     },
     {
       "id": "US-012",
@@ -238,9 +228,9 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 12,
       "passes": false,
-      "notes": ""
+      "notes": "",
+      "priority": "high"
     },
     {
       "id": "US-013",
@@ -256,9 +246,9 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 13,
       "passes": false,
-      "notes": ""
+      "notes": "",
+      "priority": "medium"
     },
     {
       "id": "US-014",
@@ -273,9 +263,9 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 14,
       "passes": false,
-      "notes": ""
+      "notes": "",
+      "priority": "high"
     },
     {
       "id": "US-015",
@@ -291,9 +281,9 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 15,
       "passes": false,
-      "notes": ""
+      "notes": "",
+      "priority": "low"
     },
     {
       "id": "US-016",
@@ -311,9 +301,9 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "priority": 16,
       "passes": false,
-      "notes": ""
+      "notes": "",
+      "priority": "low"
     }
   ]
 }
