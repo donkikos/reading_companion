@@ -10,6 +10,8 @@ services:
     working_dir: /app
     environment:
       CODEX_HOME: /app/.codex
+      QDRANT_HOST: qdrant
+      OLLAMA_BASE_URL: http://ollama:11434
     volumes:
       - ./:/app
       - /Users/tigran/.codex/auth.json:/app/.codex/auth.json:ro
