@@ -27,7 +27,13 @@ if [[ -f /.dockerenv ]] || [[ "${IN_CONTAINER:-}" == "1" ]]; then
   # NOTE: no command substitution - that keeps live progress intact.
   cat ralph_prompt.md | codex exec --dangerously-bypass-approvals-and-sandbox 2>&1 | tee "$log"
 
-  if grep -q "<promise>COMPLETE</promise>" "$log"; then
+  success_line=$(grep -m1 -E '^<promise>US_SUCCESS: US-[0-9]+</promise>$' "$log" || true)
+  if [[ -z "$success_line" ]]; then
+    echo "User story not fully completed; missing success marker."
+    exit 1
+  fi
+
+  if grep -q "^<promise>COMPLETE</promise>$" "$log"; then
     echo "PRD complete, exiting."
     exit 0
   fi
@@ -54,12 +60,27 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 for ((i=1; i<=iterations; i++)); do
   docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm codex ./ralph-codex-container.sh "$i" "$timestamp"
 
-  if command -v tmsg >/dev/null 2>&1; then
-    tmsg "Ralph Codex iteration $i completed."
+  log=".codex/logs/codex_iteration_${i}_${timestamp}.txt"
+
+  success_line=""
+  if [[ -f "$log" ]]; then
+    success_line=$(grep -m1 -E '^<promise>US_SUCCESS: US-[0-9]+</promise>$' "$log" || true)
+  fi
+  if [[ ! -f "$log" ]] || [[ -z "$success_line" ]]; then
+    if command -v tmsg >/dev/null 2>&1; then
+      tmsg "Ralph Codex iteration $i failed."
+    fi
+    exit 1
   fi
 
-  log=".codex/logs/codex_iteration_${i}_${timestamp}.txt"
-  if [[ -f "$log" ]] && grep -q "<promise>COMPLETE</promise>" "$log"; then
+  success_id="${success_line#<promise>US_SUCCESS: }"
+  success_id="${success_id%</promise>}"
+
+  if command -v tmsg >/dev/null 2>&1; then
+    tmsg "Ralph Codex iteration $i completed (${success_id})."
+  fi
+
+  if grep -q "^<promise>COMPLETE</promise>$" "$log"; then
     if command -v tmsg >/dev/null 2>&1; then
       tmsg "PRD complete, exiting."
     fi
