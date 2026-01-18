@@ -208,7 +208,11 @@ def _hash_embedding(text, dim):
     return values
 
 
-def _ollama_embed(texts, model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL, dimensions=None):
+def _ollama_embed(texts, model=None, base_url=None, dimensions=None):
+    if model is None:
+        model = OLLAMA_MODEL
+    if base_url is None:
+        base_url = OLLAMA_BASE_URL
     if isinstance(texts, str):
         texts = [texts]
 
