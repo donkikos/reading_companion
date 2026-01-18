@@ -94,3 +94,9 @@
 - Testing: ruff format db.py ingest.py tests/test_ingestion_fixture.py; ruff check .; pytest
 - **Learnings for future iterations:** Existing SQLite state files may lack new columns, so migrations should be enforced in write paths as well as init.
 ---
+## 2026-01-18 19:13 - US-011
+- What was implemented: Verified existing ingestion progress UI and backend wiring; no code changes required.
+- Files changed: progress.txt
+- Testing: ruff check .; pytest
+- **Learnings for future iterations:** Browser verification is still blocked because the Playwright MCP server is unavailable in this environment.
+---
