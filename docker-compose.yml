@@ -1,5 +1,6 @@
 services:
   app:
+    image: epub_ai_reader_ralph_app
     build: .
     ports:
       - "8000:8000"
