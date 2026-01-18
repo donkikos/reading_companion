@@ -12,9 +12,9 @@ If priority field is missing from user story, this should be the one YOU decide 
 5. Implement that single user story
 6. Run quality checks (e.g., typecheck, lint, test - use whatever your project requires)
 7. Update AGENTS.md files if you discover reusable patterns (see below)
-8. If checks pass, commit ALL changes with message: `feat: [Story ID] - [Story Title]`
+8. Append your progress to `progress.txt`
 9. Only after ALL acceptance-criteria checklist items for the story are explicitly verified as completed (including required browser verification, if applicable) AND all quality checks pass, update the PRD to set `passes: true` for the completed story
-10. Append your progress to `progress.txt`
+10. If checks pass, commit ALL changes (including `progress.txt` and any `prd.json` updates) with message: `feat: [Story ID] - [Story Title]`
 
 ## Progress Report Format
 
