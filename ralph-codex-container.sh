@@ -58,7 +58,8 @@ iterations="$1"
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
 for ((i=1; i<=iterations; i++)); do
-  docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm codex ./ralph-codex-container.sh "$i" "$timestamp"
+  run_failed=0
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm codex ./ralph-codex-container.sh "$i" "$timestamp" || run_failed=1
 
   log=".codex/logs/codex_iteration_${i}_${timestamp}.txt"
 
@@ -66,7 +67,7 @@ for ((i=1; i<=iterations; i++)); do
   if [[ -f "$log" ]]; then
     success_line=$(grep -m1 -E '^<promise>US_SUCCESS: US-[0-9]+</promise>$' "$log" || true)
   fi
-  if [[ ! -f "$log" ]] || [[ -z "$success_line" ]]; then
+  if [[ "$run_failed" -ne 0 ]] || [[ ! -f "$log" ]] || [[ -z "$success_line" ]]; then
     if command -v tmsg >/dev/null 2>&1; then
       tmsg "Ralph Codex iteration $i failed."
     fi
