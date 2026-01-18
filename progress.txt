@@ -8,6 +8,7 @@
 - Set `QDRANT_PATH` to use a local Qdrant store without a running server.
 - Use Ollama `/api/embed` with `OLLAMA_BASE_URL`/`OLLAMA_MODEL` and optional `OLLAMA_EMBED_DIM` for embeddings.
 - For Ollama integration tests, query `/api/tags` to pick a pulled model and skip if none exist.
+- When evolving the SQLite schema, use `PRAGMA table_info` plus `ALTER TABLE` to add new columns.
 
 ## 2026-01-13 18:56 - US-001
 - What was implemented: Added deterministic sentence stream builder with contiguous IDs and nav skipping; ingestion now uses it and added tests.
@@ -86,4 +87,10 @@
 - Files changed: ingest.py, main.py, tests/test_ingestion_progress.py, progress.txt
 - Testing: ruff format ingest.py main.py tests/test_ingestion_progress.py; ruff check .; pytest; Playwright browser verification blocked (browser install unsupported on Linux Arm64).
 - **Learnings for future iterations:** Playwright browser install fails on Linux Arm64 in this environment; plan alternate UI verification or provide a supported browser bundle.
+---
+## 2026-01-18 19:08 - US-013
+- What was implemented: Stored embedding model/dimension in the books table during ingestion and documented reindexing guidance; added schema migration guards and tests.
+- Files changed: db.py, ingest.py, tests/test_ingestion_fixture.py, progress.txt, prd.json
+- Testing: ruff format db.py ingest.py tests/test_ingestion_fixture.py; ruff check .; pytest
+- **Learnings for future iterations:** Existing SQLite state files may lack new columns, so migrations should be enforced in write paths as well as init.
 ---

@@ -83,6 +83,10 @@ def test_ingest_fixture_and_verify_qdrant(monkeypatch, tmp_path):
     fixture_path = Path(__file__).parent / "fixtures" / "minimal.epub"
     book_id = ingest.ingest_epub(str(fixture_path))
 
+    book = db.get_book(book_id)
+    assert book["embedding_model"] == ingest.OLLAMA_MODEL
+    assert book["embedding_dim"] == vector_dim
+
     epub_book = ingest.epub.read_epub(str(fixture_path))
     stream, _chapters = ingest.build_sentence_stream(epub_book)
     expected_chunks = len(ingest.create_fixed_window_chunks(stream))

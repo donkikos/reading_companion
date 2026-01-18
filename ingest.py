@@ -464,12 +464,15 @@ def ingest_epub(epub_path, progress_callback=None):
     chunks = create_fixed_window_chunks(stream)
     progress.stage("chunking", 100)
     chunk_payloads = build_chunk_payloads(book_hash, stream, chunks)
+    embedding_model = OLLAMA_MODEL
+    embedding_dim = None
 
     if chunk_payloads:
         qdrant_client = _get_qdrant_client()
         _ensure_qdrant_available(qdrant_client)
         progress.stage("embedding", 0)
         points, vector_dim = _build_qdrant_points(chunk_payloads, QDRANT_VECTOR_DIM)
+        embedding_dim = vector_dim
         progress.stage("embedding", 100)
         _ensure_qdrant_collection(qdrant_client, QDRANT_COLLECTION, vector_dim)
         if is_reingest:
@@ -507,9 +510,25 @@ def ingest_epub(epub_path, progress_callback=None):
 
     # 2. Store in SQLite
     if is_reingest:
-        db.update_book_metadata(book_hash, title, author, epub_path, len(stream))
+        db.update_book_metadata(
+            book_hash,
+            title,
+            author,
+            epub_path,
+            len(stream),
+            embedding_model,
+            embedding_dim,
+        )
     else:
-        db.add_book(book_hash, title, author, epub_path, len(stream))
+        db.add_book(
+            book_hash,
+            title,
+            author,
+            epub_path,
+            len(stream),
+            embedding_model,
+            embedding_dim,
+        )
     db.add_chapters(chapters_data)
 
     # Initialize reading state
