@@ -241,6 +241,7 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 **Acceptance Criteria:**
 
 - [ ] Qdrant vectors are generated from Ollama embeddings of the full chunk text (not hash placeholders).
+- [ ] Run an end-to-end ingestion using a live Ollama model and confirm embeddings are stored in Qdrant.
 - [ ] Run `ruff format` on changed Python files (line length 100)
 - [ ] Run `ruff check .` and ensure it passes
 - [ ] Add or update tests for this change

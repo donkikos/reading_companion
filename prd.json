@@ -256,6 +256,7 @@
       "description": "As a reader, I want Qdrant vectors to reflect semantic embeddings so retrieval quality is meaningful.",
       "acceptanceCriteria": [
         "Qdrant vectors are generated from Ollama embeddings of the full chunk text (not hash placeholders).",
+        "Run an end-to-end ingestion using a live Ollama model and confirm embeddings are stored in Qdrant.",
         "Run `ruff format` on changed Python files (line length 100)",
         "Run `ruff check .` and ensure it passes",
         "Add or update tests for this change",
