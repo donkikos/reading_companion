@@ -15,7 +15,8 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
     volumes:
       - ./:/app
-      - /Users/tigran/.codex/auth.json:/app/.codex/auth.json:ro
+      - ./.codex_container/config.toml:/app/.codex/config.toml:ro
+      - ./.codex_container/auth.json:/app/.codex/auth.json:ro
       - ./skills:/app/.codex/skills:ro
     stdin_open: true
     tty: true

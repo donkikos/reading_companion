@@ -1,0 +1,15 @@
+model = "gpt-5.2-codex"
+
+[features]
+web_search_request = true
+
+[sandbox_workspace_write]
+network_access = true
+
+[projects."/app"]
+trust_level = "trusted"
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest", "--browser=chrome", "--headless"]
+env = { PLAYWRIGHT_BROWSERS_PATH = "/ms-playwright" }

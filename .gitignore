@@ -16,3 +16,5 @@ _test_*.py
 
 docs/
 hidden/
+
+**/auth.json
