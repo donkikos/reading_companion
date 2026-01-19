@@ -11,5 +11,5 @@ trust_level = "trusted"
 
 [mcp_servers.playwright]
 command = "npx"
-args = ["-y", "@playwright/mcp@latest", "--browser=chrome", "--headless"]
+args = ["-y", "@playwright/mcp@latest", "--browser=chromium", "--headless"]
 env = { PLAYWRIGHT_BROWSERS_PATH = "/ms-playwright" }

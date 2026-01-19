@@ -9,6 +9,7 @@ services:
     image: epub_ai_reader_ralph_codex
     working_dir: /app
     init: true
+    user: "pwuser"
     environment:
       CODEX_HOME: /codex
       QDRANT_HOST: qdrant
