@@ -10,13 +10,12 @@ services:
     working_dir: /app
     init: true
     environment:
-      CODEX_HOME: /app/.codex
+      CODEX_HOME: /codex
       QDRANT_HOST: qdrant
       OLLAMA_BASE_URL: http://ollama:11434
     volumes:
       - ./:/app
-      - ./.codex_container/config.toml:/app/.codex/config.toml:ro
-      - ./.codex_container/auth.json:/app/.codex/auth.json:ro
-      - ./skills:/app/.codex/skills:ro
+      - ./.codex_container:/codex
+      - ./skills:/codex/skills:ro
     stdin_open: true
     tty: true
