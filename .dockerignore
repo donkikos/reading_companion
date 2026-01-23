@@ -3,6 +3,8 @@
 .codex
 .codex_container
 .data
+.history
+.local
 .venv
 __pycache__
 *.pyc
@@ -20,3 +22,5 @@ build
 tmp
 logs
 **/.DS_Store
+.pytest_cache
+.ruff_cache

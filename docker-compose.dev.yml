@@ -17,6 +17,6 @@ services:
     volumes:
       - ./:/app
       - ./.codex_container:/codex
-      - ./skills:/codex/skills:ro
+      - ./skills:/codex/skills
     stdin_open: true
     tty: true
