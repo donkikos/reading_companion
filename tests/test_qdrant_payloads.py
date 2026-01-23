@@ -32,13 +32,12 @@ def test_build_chunk_payloads_includes_expected_fields():
     assert first["book_id"] == "book-123"
     assert first["chapter_index"] == 0
     assert first["pos_start"] == 0
-    assert first["pos_end"] == 2
+    assert first["pos_end"] == 1
     assert first["sentences"] == [
         "First sentence.",
         "Second sentence.",
-        "Third sentence.",
     ]
-    assert first["text"] == "First sentence. Second sentence. Third sentence."
+    assert first["text"] == "First sentence. Second sentence."
 
     second = payloads[1]
     assert second["chapter_index"] == 1

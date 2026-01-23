@@ -193,23 +193,58 @@ def build_sentence_stream(book, progress_callback=None):
     return stream, chapters
 
 
-def create_fixed_window_chunks(stream, window=8, overlap=2):
-    """Create fixed-window sentence chunks with overlap."""
+def _chapter_ranges_from_stream(stream):
+    """Return chapter_index ranges as (chapter_index, start_idx, end_idx)."""
+    if not stream:
+        return []
+
+    ranges = []
+    current_chapter = stream[0].chapter_index
+    start_idx = 0
+
+    for idx, item in enumerate(stream[1:], start=1):
+        if item.chapter_index != current_chapter:
+            ranges.append((current_chapter, start_idx, idx - 1))
+            current_chapter = item.chapter_index
+            start_idx = idx
+
+    ranges.append((current_chapter, start_idx, len(stream) - 1))
+    return ranges
+
+
+def create_fixed_window_chunks(stream, chapters=None, window=8, overlap=2):
+    """Create fixed-window sentence chunks with overlap, per chapter."""
     if overlap < 0 or overlap >= window:
         raise ValueError("overlap must be >= 0 and less than window")
 
     if not stream:
         return []
 
+    if chapters is None:
+        chapter_ranges = _chapter_ranges_from_stream(stream)
+    else:
+        chapter_ranges = []
+        for entry in chapters:
+            if len(entry) == 4:
+                chapter_index, _title, start_seq, end_seq = entry
+            elif len(entry) == 3:
+                chapter_index, start_seq, end_seq = entry
+            else:
+                raise ValueError(
+                    "chapters entries must be (index, start, end) or include title"
+                )
+            chapter_ranges.append((chapter_index, start_seq, end_seq))
+
     step = window - overlap
     chunks = []
-    start = 0
 
-    while start < len(stream):
-        end = min(start + window, len(stream))
-        sentences = [item.text for item in stream[start:end]]
-        chunks.append(Chunk(start, end - 1, sentences))
-        start += step
+    for _chapter_index, start_idx, end_idx in chapter_ranges:
+        start = start_idx
+        while start <= end_idx:
+            end = min(start + window, end_idx + 1)
+            sentences = [item.text for item in stream[start:end]]
+            chunks.append(Chunk(start, end - 1, sentences))
+            start += step
 
     return chunks
 
@@ -517,7 +552,7 @@ def ingest_epub(epub_path, progress_callback=None):
     progress.stage("parsing", 100)
 
     progress.stage("chunking", 0)
-    chunks = create_fixed_window_chunks(stream)
+    chunks = create_fixed_window_chunks(stream, chapters=chapters)
     progress.stage("chunking", 100)
     chunk_payloads = build_chunk_payloads(book_hash, stream, chunks)
     embedding_model = TEI_MODEL

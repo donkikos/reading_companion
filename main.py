@@ -223,8 +223,8 @@ def verify_ingestion(request: VerifyIngestionRequest):
             status_code=500, detail=f"Failed to read EPUB: {exc}"
         ) from exc
 
-    stream, _chapters = ingest.build_sentence_stream(epub_book)
-    expected_chunks = len(ingest.create_fixed_window_chunks(stream))
+    stream, chapters = ingest.build_sentence_stream(epub_book)
+    expected_chunks = len(ingest.create_fixed_window_chunks(stream, chapters=chapters))
 
     try:
         qdrant_client = ingest._get_qdrant_client()

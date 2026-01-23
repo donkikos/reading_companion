@@ -35,7 +35,9 @@ def _setup_common(monkeypatch, tmp_path, book_id):
     monkeypatch.setattr(db, "get_book", lambda _book_id: {"filepath": str(epub_path)})
     monkeypatch.setattr(ingest.epub, "read_epub", lambda _path: "book")
     monkeypatch.setattr(ingest, "build_sentence_stream", lambda _book: (["s1"], []))
-    monkeypatch.setattr(ingest, "create_fixed_window_chunks", lambda _stream: [1, 2, 3])
+    monkeypatch.setattr(
+        ingest, "create_fixed_window_chunks", lambda _stream, **_kwargs: [1, 2, 3]
+    )
     monkeypatch.setattr(ingest, "_build_qdrant_book_filter", lambda _book_id: {})
 
 

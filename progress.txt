@@ -126,3 +126,9 @@
 - Testing: ruff format ingest.py tests/test_ingestion_progress.py; ruff check .; pytest
 - **Learnings for future iterations:** Chroma may download its default embedding model on first ingest, which can delay metadata-stage completion during UI verification.
 ---
+## 2026-01-23 14:58 - US-018
+- What was implemented: Chunking now respects chapter boundaries (with optional chapter ranges), keeps last partial chunk per chapter, and verification uses the same chapter-aware chunking; updated chunk and payload tests accordingly.
+- Files changed: ingest.py, main.py, tests/test_chunks.py, tests/test_qdrant_payloads.py, tests/test_verify_ingestion.py, prd.json, progress.txt
+- Testing: ruff format ingest.py main.py tests/test_chunks.py tests/test_qdrant_payloads.py tests/test_verify_ingestion.py; ruff check .; TEI_BASE_URL=http://127.0.0.1:9 pytest
+- **Learnings for future iterations:** Chapter-aware chunking should derive ranges from the sentence stream (or provided chapter ranges) to prevent cross-chapter payloads.
+---

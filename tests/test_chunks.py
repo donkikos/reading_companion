@@ -36,3 +36,24 @@ def test_create_fixed_window_chunks_for_short_stream():
     assert chunks[0].pos_start == 0
     assert chunks[0].pos_end == 4
     assert chunks[0].sentences == [item.text for item in stream]
+
+
+def test_create_fixed_window_chunks_respects_chapter_boundaries():
+    stream = [
+        SentenceStreamItem(seq_id=0, chapter_index=0, text="C0 S0."),
+        SentenceStreamItem(seq_id=1, chapter_index=0, text="C0 S1."),
+        SentenceStreamItem(seq_id=2, chapter_index=0, text="C0 S2."),
+        SentenceStreamItem(seq_id=3, chapter_index=1, text="C1 S0."),
+        SentenceStreamItem(seq_id=4, chapter_index=1, text="C1 S1."),
+    ]
+
+    chunks = create_fixed_window_chunks(stream, window=3, overlap=1)
+
+    assert [(chunk.pos_start, chunk.pos_end) for chunk in chunks] == [
+        (0, 2),
+        (2, 2),
+        (3, 4),
+    ]
+    assert chunks[0].sentences == ["C0 S0.", "C0 S1.", "C0 S2."]
+    assert chunks[1].sentences == ["C0 S2."]
+    assert chunks[2].sentences == ["C1 S0.", "C1 S1."]
