@@ -20,3 +20,5 @@ hidden/
 **/auth.json
 .codex_container/sessions
 **/tmp
+
+skills/.system/
