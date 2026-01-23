@@ -88,6 +88,7 @@ For any story that changes UI, you MUST verify it works in the browser:
 2. Navigate to the relevant page
 3. Verify the UI changes work as expected
 4. Take a screenshot if helpful for the progress log
+5. All required UI stages must be observed and evidenced in one continuous run; do not combine evidence from multiple runs or rely on past observations.
 
 A frontend story is NOT complete until browser verification passes.
 
