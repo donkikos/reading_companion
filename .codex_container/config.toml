@@ -9,7 +9,3 @@ network_access = true
 [projects."/app"]
 trust_level = "trusted"
 
-[mcp_servers.playwright]
-command = "npx"
-args = ["-y", "@playwright/mcp@latest", "--browser=chromium", "--headless"]
-env = { PLAYWRIGHT_BROWSERS_PATH = "/ms-playwright" }
