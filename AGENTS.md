@@ -37,6 +37,7 @@ Core workflow:
 
 ## Testing Guidelines
 - Tests are in `tests/test_*.py` and use `pytest`.
+- `tests/conftest.py` adds the repo root to `sys.path` so single-test runs can import top-level modules.
 - Integration tests for Qdrant/TEI skip if services are unavailable; run `docker compose up` for full coverage.
 - Add tests alongside new ingestion or API behavior; prefer focused unit tests over large fixtures.
 

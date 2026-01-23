@@ -9,6 +9,7 @@
 - TEI embeddings use `/embed` with `TEI_BASE_URL`, and tests should stub `_tei_embed` for determinism.
 - TEI Docker image is amd64-only; `docker-compose.yml` pins `platform: linux/amd64` for the tei service.
 - When evolving the SQLite schema, use `PRAGMA table_info` plus `ALTER TABLE` to add new columns.
+- Startup cleanup compares Qdrant payload `book_id`s to SQLite `books` and deletes orphaned chunks via scroll.
 
 ## 2026-01-13 18:56 - US-001
 - What was implemented: Added deterministic sentence stream builder with contiguous IDs and nav skipping; ingestion now uses it and added tests.
@@ -111,4 +112,10 @@
 - Files changed: ingest.py, docker-compose.yml, docker-compose.dev.yml, README.md, progress.txt
 - Testing: ruff format ingest.py; ruff check .; pytest (TEI integration test ran against live TEI)
 - **Learnings for future iterations:** The TEI CPU image is amd64-only and must be pinned in Compose on Apple silicon to run the integration test.
+---
+## 2026-01-23 06:36 - US-019
+- What was implemented: Added startup cleanup that scans Qdrant payload book_id values against SQLite and deletes orphaned chunks; wired into FastAPI lifespan with logging; added unit tests; ensured pytest single-test runs from repo root.
+- Files changed: ingest.py, main.py, tests/test_qdrant_cleanup.py, tests/conftest.py, progress.txt
+- Testing: ruff format; ruff check .; pytest
+- **Learnings for future iterations:** Prefer FastAPI lifespan handlers over deprecated on_event hooks; add tests/conftest.py to keep repo root on sys.path for single-test runs.
 ---

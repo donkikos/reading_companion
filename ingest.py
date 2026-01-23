@@ -3,6 +3,7 @@ import chromadb
 import hashlib
 import ebooklib
 import json
+import logging
 import os
 import uuid
 import urllib.error
@@ -15,6 +16,7 @@ import db
 # Initialize Spacy and ChromaDB
 _NLP = None
 chroma_client = chromadb.PersistentClient(path=".data/chroma_db")
+logger = logging.getLogger(__name__)
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "book_chunks")
 _RAW_QDRANT_VECTOR_DIM = os.getenv("QDRANT_VECTOR_DIM")
 QDRANT_VECTOR_DIM = int(_RAW_QDRANT_VECTOR_DIM) if _RAW_QDRANT_VECTOR_DIM else None
@@ -368,6 +370,54 @@ def _delete_qdrant_book_chunks(client, collection_name, book_id):
     selector = qmodels.FilterSelector(filter=_build_qdrant_book_filter(book_id))
     client.delete(collection_name=collection_name, points_selector=selector)
     return True
+
+
+def cleanup_orphaned_qdrant_chunks(limit=256):
+    qdrant_client = _get_qdrant_client()
+    try:
+        _ensure_qdrant_available(qdrant_client)
+    except RuntimeError as exc:
+        logger.error("Startup Qdrant cleanup failed: %s", exc)
+        raise
+
+    collection_name = QDRANT_COLLECTION
+    if not qdrant_client.collection_exists(collection_name):
+        logger.info(
+            "Startup Qdrant cleanup skipped; collection '%s' missing.", collection_name
+        )
+        return []
+
+    known_books = {book["hash"] for book in db.get_all_books()}
+    orphaned = set()
+    offset = None
+    while True:
+        points, offset = qdrant_client.scroll(
+            collection_name=collection_name,
+            scroll_filter=None,
+            limit=limit,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+        for point in points:
+            payload = point.payload or {}
+            book_id = payload.get("book_id")
+            if not book_id:
+                continue
+            if book_id not in known_books:
+                orphaned.add(book_id)
+        if offset is None:
+            break
+
+    if not orphaned:
+        logger.info("Startup Qdrant cleanup found no orphaned book ids.")
+        return []
+
+    for book_id in sorted(orphaned):
+        _delete_qdrant_book_chunks(qdrant_client, collection_name, book_id)
+
+    logger.info("Startup Qdrant cleanup removed %d orphaned book ids.", len(orphaned))
+    return sorted(orphaned)
 
 
 def _build_qdrant_points(payloads, vector_dim):

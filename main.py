@@ -2,6 +2,8 @@ import os
 import re
 import shutil
 import uuid
+from contextlib import asynccontextmanager
+
 import ingest
 import db
 import chromadb
@@ -11,7 +13,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Dict
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    ingest.cleanup_orphaned_qdrant_chunks()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Initialize ChromaDB
 chroma_client = chromadb.PersistentClient(path=".data/chroma_db")
