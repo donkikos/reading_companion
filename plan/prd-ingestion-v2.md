@@ -10,7 +10,8 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - Keep ingestion deterministic and repeatable for the same book content.
 - Support re-ingestion to replace all chunks for a book.
 - Fail fast with clear errors if Qdrant is unavailable.
-- Use a GPU-backed TEI embedding service for ingestion (Ollama was the initial provider; see US-012/US-014 and US-017).
+- Use a TEI embedding service for ingestion (CPU on macOS; switch to GPU by changing the
+  Docker Compose image tag; Ollama was the initial provider; see US-012/US-014 and US-017).
 - Support reindexing when the embedding model changes.
 - Run the embedding service in Docker Compose with persistent model storage.
 
@@ -190,6 +191,9 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - [ ] Uploading a book shows progress messages and percentage updates in the library UI.
 - [ ] The UI surfaces stage transitions (hashing, parsing, chunking, embedding, Qdrant upsert, metadata save).
 - [ ] The progress percentage reflects the full ingestion pipeline, not only sentence streaming.
+- [ ] Sentence-based progress may be tracked internally, but the UI must reflect the full pipeline only.
+- [ ] The UI shows top-level stage progress as `i/N` with an overall progress number.
+- [ ] Lower-level percent is optional (e.g., sentence parsing) when reasonable.
 - [ ] The task status reaches "completed" only after all storage steps finish.
 - [ ] Errors during ingestion surface a clear error message in the UI.
 - [ ] If any ingestion error occurs during verification, the story fails verification.
@@ -258,6 +262,9 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 **Acceptance Criteria:**
 
 - [ ] Ingestion no longer writes documents or metadata to Chroma.
+- [ ] All Chroma-related code paths are removed.
+- [ ] Delete flow does not attempt Chroma cleanup once Chroma is removed.
+- [ ] `/sync` uses Qdrant (not Chroma) for matching and position updates.
 - [ ] Removal is documented and tests are updated accordingly.
 - [ ] Run `ruff format` on changed Python files (line length 100)
 - [ ] Run `ruff check .` and ensure it passes
@@ -272,10 +279,12 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
+- [ ] Logs are structured JSON at debug level.
 - [ ] Logs include total ingestion time.
 - [ ] Logs include time spent generating embeddings.
 - [ ] Logs include time spent upserting to Qdrant.
 - [ ] Logs include chunks processed and chunks/sec.
+- [ ] Logs are emitted to stdout.
 - [ ] Run `ruff format` on changed Python files (line length 100)
 - [ ] Run `ruff check .` and ensure it passes
 - [ ] Add or update tests for this change
@@ -283,22 +292,74 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - [ ] Run `pytest` and ensure it passes
 - [ ] Typecheck/lint passes
 
-### US-017: Migrate embeddings away from Ollama to GPU-backed TEI (High Priority)
+### US-017: Migrate embeddings away from Ollama to TEI (High Priority)
 
-**Description:** As a developer, I want ingestion embeddings served by Hugging Face Text Embeddings Inference (TEI) on GPU so the configured model is actually served and reliable without Ollama.
+**Description:** As a developer, I want ingestion embeddings served by Hugging Face Text Embeddings Inference (TEI) so the configured model is actually served and reliable without Ollama.
 
 **Acceptance Criteria:**
 
 - [ ] Replace the Ollama embedding dependency with a TEI service in Docker Compose.
-- [ ] TEI is configured to serve the target embedding model and runs on GPU.
+- [ ] Remove Ollama completely (compose service, env vars, code paths, docs/tests).
+- [ ] Use the CPU image `ghcr.io/huggingface/text-embeddings-inference:cpu-1.8.1` on macOS.
+- [ ] Switching to GPU is done by changing the Docker Compose image tag (no code changes).
+- [ ] TEI is configured to serve the target embedding model.
 - [ ] Ingestion embeddings are generated via TEI and succeed for a real EPUB upload.
-- [ ] TEI requests use the `/embed` endpoint and return embeddings in the expected shape for Qdrant.
+- [ ] TEI requests use the `/embed` endpoint and return an array of float arrays.
 - [ ] The embedding base URL and model name are configurable via environment variables (default model: `bge-base-en-v1.5`).
 - [ ] The model uses fixed dimensions; the configured Qdrant vector size matches the TEI embedding dimension.
 - [ ] The model is cached and reused across restarts (TEI model cache volume).
 - [ ] The app surfaces a clear error if the embedding service is unavailable.
-- [ ] Document setup and GPU requirements in project docs.
+- [ ] Document in `README` the TEI image tag, how to switch to GPU via image tag, and required env vars (model name, base URL, batching).
 - [ ] Note that this story supersedes Ollama-specific stories (US-012/US-014) without changing their historical status in `prd.json`.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
+### US-018: Chunking within chapter boundaries
+
+**Description:** As a reader, I want chunking to stay within chapter boundaries so context is consistent.
+
+**Acceptance Criteria:**
+
+- [ ] Chunks are created per-chapter using the same window/overlap params.
+- [ ] Chunks do not cross chapter boundaries.
+- [ ] The last partial chunk in each chapter is kept.
+- [ ] `chapter_index` always matches the chunk's chapter.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
+### US-019: Data consistency check on server launch
+
+**Description:** As a developer, I want server launch to clean up orphaned Qdrant data so storage stays consistent.
+
+**Acceptance Criteria:**
+
+- [ ] On startup, scan local books in SQLite and remove Qdrant chunks for missing book IDs.
+- [ ] Cleanup runs before ingestion requests are accepted.
+- [ ] If Qdrant is unavailable, the server fails startup with a clear error.
+- [ ] Actions and errors are logged clearly.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
+### US-020: Purge old ingested Qdrant data after TEI migration
+
+**Description:** As a developer, I want Qdrant data purged after TEI migration so all embeddings are consistent.
+
+**Acceptance Criteria:**
+
+- [ ] At the start of implementing this story, purge all existing Qdrant chunks via API calls or CLI commands.
+- [ ] Cleanup is logged clearly and is idempotent.
 - [ ] Run `ruff format` on changed Python files (line length 100)
 - [ ] Run `ruff check .` and ensure it passes
 - [ ] Add or update tests for this change
@@ -321,15 +382,14 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - FR-9: The system must provide a single command to launch the app and Qdrant with health checks.
 - FR-10: The system must support an EPUB fixture for deterministic ingestion tests.
 - FR-11: The system must allow deleting a book and all associated stored data.
-- FR-12: Ingestion must generate embeddings via TEI (GPU-backed).
+- FR-12: Ingestion must generate embeddings via TEI (CPU on macOS; switch to GPU by changing the
+  Docker Compose image tag).
 - FR-13: Embedding model name and base URL must be configurable.
 - FR-14: Ingestion must fail with a clear error if the embedding service is unavailable.
 - FR-15: Changing the embedding model requires reindexing.
 - FR-16: The embedding service runs as a docker compose service with persistent model storage.
 
 ## Non-Goals (Out of Scope)
-
-- UI changes for upload or progress display beyond delete confirmation.
 - Reranking or hybrid retrieval.
 - Alternative chunking strategies beyond fixed window.
 
@@ -344,10 +404,13 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - Qdrant payload indexes should support filtering by `book_id` and `pos_start`.
 - Use a `book_id` derived from the file hash to remain consistent with V1 identifiers.
 - Ingestion is triggered by the existing upload flow and receives the `book_id`.
-- Track ingestion progress as a best-effort percentage (e.g., sentences processed / total).
+- Track ingestion progress as a best-effort full-pipeline percentage for the UI; internal
+  sentence-based tracking is acceptable.
 - Dependencies include `qdrant-client`.
 - Qdrant must be available locally for ingestion runs.
 - Add local embedding model cache paths to `.gitignore` to avoid committing downloads.
+- TEI batching env vars: `MAX_CLIENT_BATCH_SIZE=64`, `MAX_BATCH_TOKENS=16384`.
+- Use Docker Compose image tag changes to switch TEI CPU/GPU variants.
 - Restart the app server after implementing new features so new routes and logic are loaded.
 - Verification should recompute chunk counts from the sentence stream rather than relying on stored counts.
 - Use `tests/fixtures/minimal.epub` as the deterministic ingestion fixture for tests.

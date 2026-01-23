@@ -196,8 +196,12 @@
         "Uploading a book shows progress messages and percentage updates in the library UI.",
         "The UI surfaces stage transitions (hashing, parsing, chunking, embedding, Qdrant upsert, metadata save).",
         "The progress percentage reflects the full ingestion pipeline, not only sentence streaming.",
+        "Sentence-based progress may be tracked internally, but the UI must reflect the full pipeline only.",
+        "The UI shows top-level stage progress as `i/N` with an overall progress number.",
+        "Lower-level percent is optional (e.g., sentence parsing) when reasonable.",
         "The task status reaches \"completed\" only after all storage steps finish.",
         "Errors during ingestion surface a clear error message in the UI.",
+        "If any ingestion error occurs during verification, the story fails verification.",
         "Restart the app server after implementing this story before verifying the UI.",
         "Verify in browser using MCP.",
         "Run `ruff format` on changed Python files (line length 100)",
@@ -275,6 +279,9 @@
       "description": "As a developer, I want to remove Chroma writes so ingestion only targets Qdrant and SQLite.",
       "acceptanceCriteria": [
         "Ingestion no longer writes documents or metadata to Chroma.",
+        "All Chroma-related code paths are removed.",
+        "Delete flow does not attempt Chroma cleanup once Chroma is removed.",
+        "`/sync` uses Qdrant (not Chroma) for matching and position updates.",
         "Removal is documented and tests are updated accordingly.",
         "Run `ruff format` on changed Python files (line length 100)",
         "Run `ruff check .` and ensure it passes",
@@ -292,10 +299,12 @@
       "title": "Log ingestion timing metrics",
       "description": "As a developer, I want ingestion timing metrics so we can validate performance on CPU-only Macs.",
       "acceptanceCriteria": [
+        "Logs are structured JSON at debug level.",
         "Logs include total ingestion time.",
         "Logs include time spent generating embeddings.",
         "Logs include time spent upserting to Qdrant.",
         "Logs include chunks processed and chunks/sec.",
+        "Logs are emitted to stdout.",
         "Run `ruff format` on changed Python files (line length 100)",
         "Run `ruff check .` and ensure it passes",
         "Add or update tests for this change",
@@ -306,6 +315,93 @@
       "passes": false,
       "notes": "",
       "priority": "low"
+    },
+    {
+      "id": "US-017",
+      "title": "Migrate embeddings away from Ollama to TEI (High Priority)",
+      "description": "As a developer, I want ingestion embeddings served by Hugging Face Text Embeddings Inference (TEI) so the configured model is actually served and reliable without Ollama.",
+      "acceptanceCriteria": [
+        "Replace the Ollama embedding dependency with a TEI service in Docker Compose.",
+        "Remove Ollama completely (compose service, env vars, code paths, docs/tests).",
+        "Use the CPU image `ghcr.io/huggingface/text-embeddings-inference:cpu-1.8.1` on macOS.",
+        "Switching to GPU is done by changing the Docker Compose image tag (no code changes).",
+        "TEI is configured to serve the target embedding model.",
+        "Ingestion embeddings are generated via TEI and succeed for a real EPUB upload.",
+        "TEI requests use the `/embed` endpoint and return an array of float arrays.",
+        "The embedding base URL and model name are configurable via environment variables (default model: `bge-base-en-v1.5`).",
+        "The model uses fixed dimensions; the configured Qdrant vector size matches the TEI embedding dimension.",
+        "The model is cached and reused across restarts (TEI model cache volume).",
+        "The app surfaces a clear error if the embedding service is unavailable.",
+        "Document in `README` the TEI image tag, how to switch to GPU via image tag, and required env vars (model name, base URL, batching).",
+        "Note that this story supersedes Ollama-specific stories (US-012/US-014) without changing their historical status in `prd.json`.",
+        "Run `ruff format` on changed Python files (line length 100)",
+        "Run `ruff check .` and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run `pytest` and ensure it passes",
+        "Typecheck/lint passes"
+      ],
+      "passes": false,
+      "notes": "",
+      "priority": "high"
+    },
+    {
+      "id": "US-018",
+      "title": "Chunking within chapter boundaries",
+      "description": "As a reader, I want chunking to stay within chapter boundaries so context is consistent.",
+      "acceptanceCriteria": [
+        "Chunks are created per-chapter using the same window/overlap params.",
+        "Chunks do not cross chapter boundaries.",
+        "The last partial chunk in each chapter is kept.",
+        "`chapter_index` always matches the chunk's chapter.",
+        "Run `ruff format` on changed Python files (line length 100)",
+        "Run `ruff check .` and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run `pytest` and ensure it passes",
+        "Typecheck/lint passes"
+      ],
+      "passes": false,
+      "notes": "",
+      "priority": "medium"
+    },
+    {
+      "id": "US-019",
+      "title": "Data consistency check on server launch",
+      "description": "As a developer, I want server launch to clean up orphaned Qdrant data so storage stays consistent.",
+      "acceptanceCriteria": [
+        "On startup, scan local books in SQLite and remove Qdrant chunks for missing book IDs.",
+        "Cleanup runs before ingestion requests are accepted.",
+        "If Qdrant is unavailable, the server fails startup with a clear error.",
+        "Actions and errors are logged clearly.",
+        "Run `ruff format` on changed Python files (line length 100)",
+        "Run `ruff check .` and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run `pytest` and ensure it passes",
+        "Typecheck/lint passes"
+      ],
+      "passes": false,
+      "notes": "",
+      "priority": "high"
+    },
+    {
+      "id": "US-020",
+      "title": "Purge old ingested Qdrant data after TEI migration",
+      "description": "As a developer, I want Qdrant data purged after TEI migration so all embeddings are consistent.",
+      "acceptanceCriteria": [
+        "At the start of implementing this story, purge all existing Qdrant chunks via API calls or CLI commands.",
+        "Cleanup is logged clearly and is idempotent.",
+        "Run `ruff format` on changed Python files (line length 100)",
+        "Run `ruff check .` and ensure it passes",
+        "Add or update tests for this change",
+        "Tests pass",
+        "Run `pytest` and ensure it passes",
+        "Typecheck/lint passes"
+      ],
+      "passes": false,
+      "notes": "",
+      "priority": "high"
     }
   ]
 }
