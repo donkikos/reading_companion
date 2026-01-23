@@ -10,9 +10,9 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - Keep ingestion deterministic and repeatable for the same book content.
 - Support re-ingestion to replace all chunks for a book.
 - Fail fast with clear errors if Qdrant is unavailable.
-- Generate embeddings via a configurable external Ollama service.
+- Use a GPU-backed TEI embedding service for ingestion (Ollama was the initial provider; see US-012/US-014 and US-017).
 - Support reindexing when the embedding model changes.
-- Run Ollama as a docker compose service with persistent model storage.
+- Run the embedding service in Docker Compose with persistent model storage.
 
 ## User Stories
 
@@ -192,6 +192,7 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - [ ] The progress percentage reflects the full ingestion pipeline, not only sentence streaming.
 - [ ] The task status reaches "completed" only after all storage steps finish.
 - [ ] Errors during ingestion surface a clear error message in the UI.
+- [ ] If any ingestion error occurs during verification, the story fails verification.
 - [ ] Restart the app server after implementing this story before verifying the UI.
 - [ ] Verify in browser using MCP.
 - [ ] Run `ruff format` on changed Python files (line length 100)
@@ -282,6 +283,29 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - [ ] Run `pytest` and ensure it passes
 - [ ] Typecheck/lint passes
 
+### US-017: Migrate embeddings away from Ollama to GPU-backed TEI (High Priority)
+
+**Description:** As a developer, I want ingestion embeddings served by Hugging Face Text Embeddings Inference (TEI) on GPU so the configured model is actually served and reliable without Ollama.
+
+**Acceptance Criteria:**
+
+- [ ] Replace the Ollama embedding dependency with a TEI service in Docker Compose.
+- [ ] TEI is configured to serve the target embedding model and runs on GPU.
+- [ ] Ingestion embeddings are generated via TEI and succeed for a real EPUB upload.
+- [ ] TEI requests use the `/embed` endpoint and return embeddings in the expected shape for Qdrant.
+- [ ] The embedding base URL and model name are configurable via environment variables (default model: `bge-base-en-v1.5`).
+- [ ] The model uses fixed dimensions; the configured Qdrant vector size matches the TEI embedding dimension.
+- [ ] The model is cached and reused across restarts (TEI model cache volume).
+- [ ] The app surfaces a clear error if the embedding service is unavailable.
+- [ ] Document setup and GPU requirements in project docs.
+- [ ] Note that this story supersedes Ollama-specific stories (US-012/US-014) without changing their historical status in `prd.json`.
+- [ ] Run `ruff format` on changed Python files (line length 100)
+- [ ] Run `ruff check .` and ensure it passes
+- [ ] Add or update tests for this change
+- [ ] Tests pass
+- [ ] Run `pytest` and ensure it passes
+- [ ] Typecheck/lint passes
+
 ## Functional Requirements
 
 - FR-1: The system must parse EPUBs into a deterministic global sentence stream.
@@ -297,11 +321,11 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - FR-9: The system must provide a single command to launch the app and Qdrant with health checks.
 - FR-10: The system must support an EPUB fixture for deterministic ingestion tests.
 - FR-11: The system must allow deleting a book and all associated stored data.
-- FR-12: Ingestion must generate embeddings via Ollama `/api/embed`.
-- FR-13: Embedding model and Ollama base URL must be configurable.
+- FR-12: Ingestion must generate embeddings via TEI (GPU-backed).
+- FR-13: Embedding model name and base URL must be configurable.
 - FR-14: Ingestion must fail with a clear error if the embedding service is unavailable.
 - FR-15: Changing the embedding model requires reindexing.
-- FR-16: Ollama runs as a docker compose service with persistent model storage.
+- FR-16: The embedding service runs as a docker compose service with persistent model storage.
 
 ## Non-Goals (Out of Scope)
 
@@ -323,7 +347,7 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 - Track ingestion progress as a best-effort percentage (e.g., sentences processed / total).
 - Dependencies include `qdrant-client`.
 - Qdrant must be available locally for ingestion runs.
-- Add local Ollama model cache paths to `.gitignore` to avoid committing downloads.
+- Add local embedding model cache paths to `.gitignore` to avoid committing downloads.
 - Restart the app server after implementing new features so new routes and logic are loaded.
 - Verification should recompute chunk counts from the sentence stream rather than relying on stored counts.
 - Use `tests/fixtures/minimal.epub` as the deterministic ingestion fixture for tests.
