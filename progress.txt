@@ -3,6 +3,7 @@
 - On re-ingest, clear existing Chroma docs, chapters, and Qdrant chunks by `book_id` before reindexing.
 - Ingestion progress percentages are derived from total sentence counts computed before streaming.
 - Use `IngestionProgress` stage ranges to map full-pipeline progress updates to UI percentages.
+- Ingestion progress messages are prefixed with stage index `i/N` to drive the UI progress display.
 - Check Qdrant availability with `_ensure_qdrant_available` before collection operations to fail fast.
 - In ingestion tests, use fake Qdrant and Chroma clients to avoid external service dependencies.
 - Set `QDRANT_PATH` to use a local Qdrant store without a running server.
@@ -118,4 +119,10 @@
 - Files changed: ingest.py, main.py, tests/test_qdrant_cleanup.py, tests/conftest.py, progress.txt
 - Testing: ruff format; ruff check .; pytest
 - **Learnings for future iterations:** Prefer FastAPI lifespan handlers over deprecated on_event hooks; add tests/conftest.py to keep repo root on sys.path for single-test runs.
+---
+## 2026-01-23 14:47 - US-011
+- What was implemented: Prefixed ingestion stage messages with `i/N` for UI display and verified the progress UI in the browser.
+- Files changed: ingest.py, tests/test_ingestion_progress.py, progress.txt
+- Testing: ruff format ingest.py tests/test_ingestion_progress.py; ruff check .; pytest
+- **Learnings for future iterations:** Chroma may download its default embedding model on first ingest, which can delay metadata-stage completion during UI verification.
 ---

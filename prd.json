@@ -211,7 +211,7 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "passes": false,
+      "passes": true,
       "notes": "",
       "priority": "high"
     },

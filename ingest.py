@@ -52,6 +52,10 @@ def _build_stage_ranges():
 
 
 INGESTION_STAGE_RANGES = _build_stage_ranges()
+INGESTION_STAGE_INDEX = {
+    key: index + 1 for index, (key, _label, _weight) in enumerate(INGESTION_STAGES)
+}
+INGESTION_STAGE_TOTAL = len(INGESTION_STAGES)
 
 
 class IngestionProgress:
@@ -70,7 +74,9 @@ class IngestionProgress:
         if overall < self._last_percent:
             overall = self._last_percent
         self._last_percent = overall
-        self._callback(message or default_label, overall)
+        label = message or default_label
+        stage_index = INGESTION_STAGE_INDEX[stage_key]
+        self._callback(f"{stage_index}/{INGESTION_STAGE_TOTAL} {label}", overall)
 
 
 def get_file_hash(filepath):

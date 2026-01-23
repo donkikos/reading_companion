@@ -76,15 +76,18 @@ def test_ingestion_reports_stage_progress(monkeypatch, tmp_path):
     messages = [message for message, _ in updates]
     percents = [percent for _, percent in updates]
 
-    for marker in [
-        "Hashing",
-        "Parsing",
-        "Chunking",
-        "Embedding",
-        "Qdrant upsert",
-        "Metadata save",
-    ]:
-        assert any(marker in message for message in messages)
+    expected = [
+        ("1/6", "Hashing"),
+        ("2/6", "Parsing"),
+        ("3/6", "Chunking"),
+        ("4/6", "Embedding"),
+        ("5/6", "Qdrant upsert"),
+        ("6/6", "Metadata save"),
+    ]
+    for stage_prefix, marker in expected:
+        assert any(
+            stage_prefix in message and marker in message for message in messages
+        )
 
     assert percents == sorted(percents)
     assert percents[-1] == 100
