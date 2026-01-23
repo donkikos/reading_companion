@@ -213,7 +213,7 @@
       ],
       "passes": false,
       "notes": "",
-      "priority": "medium"
+      "priority": "high"
     },
     {
       "id": "US-012",
@@ -341,7 +341,7 @@
         "Run `pytest` and ensure it passes",
         "Typecheck/lint passes"
       ],
-      "passes": false,
+      "passes": true,
       "notes": "",
       "priority": "high"
     },
@@ -401,7 +401,7 @@
       ],
       "passes": false,
       "notes": "",
-      "priority": "high"
+      "priority": "medium"
     }
   ]
 }

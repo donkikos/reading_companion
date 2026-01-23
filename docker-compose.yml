@@ -7,13 +7,15 @@ services:
     environment:
       QDRANT_HOST: qdrant
       QDRANT_PORT: "6333"
-      OLLAMA_BASE_URL: http://ollama:11434
+      TEI_BASE_URL: http://tei:80
+      TEI_MODEL: ${TEI_MODEL:-BAAI/bge-base-en-v1.5}
+      TEI_BATCH_SIZE: ${TEI_BATCH_SIZE:-32}
     volumes:
       - ./.data:/app/.data
     depends_on:
       qdrant:
         condition: service_started
-      ollama:
+      tei:
         condition: service_started
 
   qdrant:
@@ -23,12 +25,16 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
-  ollama:
-    image: ollama/ollama:latest
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8.1
+    platform: linux/amd64
+    command:
+      - "--model-id"
+      - "${TEI_MODEL:-BAAI/bge-base-en-v1.5}"
     ports:
-      - "11434:11434"
+      - "8080:80"
     volumes:
-      - ollama_data:/root/.ollama
+      - tei_data:/data
 
   healthcheck:
     image: python:3.11-slim
@@ -44,4 +50,4 @@ services:
 
 volumes:
   qdrant_data:
-  ollama_data:
+  tei_data:

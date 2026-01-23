@@ -74,7 +74,7 @@ def test_ingest_fixture_and_verify_qdrant(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
     monkeypatch.setattr(
         ingest,
-        "_ollama_embed",
+        "_tei_embed",
         lambda texts, **_kwargs: [
             ingest._hash_embedding(text, dim=vector_dim) for text in texts
         ],
@@ -84,7 +84,7 @@ def test_ingest_fixture_and_verify_qdrant(monkeypatch, tmp_path):
     book_id = ingest.ingest_epub(str(fixture_path))
 
     book = db.get_book(book_id)
-    assert book["embedding_model"] == ingest.OLLAMA_MODEL
+    assert book["embedding_model"] == ingest.TEI_MODEL
     assert book["embedding_dim"] == vector_dim
 
     epub_book = ingest.epub.read_epub(str(fixture_path))

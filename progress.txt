@@ -6,8 +6,8 @@
 - Check Qdrant availability with `_ensure_qdrant_available` before collection operations to fail fast.
 - In ingestion tests, use fake Qdrant and Chroma clients to avoid external service dependencies.
 - Set `QDRANT_PATH` to use a local Qdrant store without a running server.
-- Use Ollama `/api/embed` with `OLLAMA_BASE_URL`/`OLLAMA_MODEL` and optional `OLLAMA_EMBED_DIM` for embeddings.
-- For Ollama integration tests, query `/api/tags` to pick a pulled model and skip if none exist.
+- TEI embeddings use `/embed` with `TEI_BASE_URL`, and tests should stub `_tei_embed` for determinism.
+- TEI Docker image is amd64-only; `docker-compose.yml` pins `platform: linux/amd64` for the tei service.
 - When evolving the SQLite schema, use `PRAGMA table_info` plus `ALTER TABLE` to add new columns.
 
 ## 2026-01-13 18:56 - US-001
@@ -99,4 +99,16 @@
 - Files changed: progress.txt
 - Testing: ruff check .; pytest
 - **Learnings for future iterations:** Browser verification is still blocked because the Playwright MCP server is unavailable in this environment.
+---
+## 2026-01-23 05:46 - US-017
+- What was implemented: Swapped ingestion embeddings to TEI `/embed` with batching, updated compose/services/env vars, refreshed docs/README, and migrated tests to TEI.
+- Files changed: ingest.py, docker-compose.yml, docker-compose.dev.yml, tests/test_tei_embed.py, tests/test_tei_integration.py, tests/test_ingestion_fixture.py, tests/test_ingestion_progress.py, tests/test_qdrant_integration.py, docs/notes.md, AGENTS.md, README.md, progress.txt
+- Testing: ruff format ingest.py tests/test_tei_embed.py tests/test_tei_integration.py tests/test_ingestion_fixture.py tests/test_ingestion_progress.py tests/test_qdrant_integration.py; ruff check .; pytest (TEI integration test skipped: TEI unavailable)
+- **Learnings for future iterations:** TEI `/embed` can return a single vector for one input; normalize to list-of-lists and batch requests to keep payloads reasonable.
+---
+## 2026-01-23 06:16 - US-017
+- What was implemented: Switched TEI default model to `BAAI/bge-base-en-v1.5`, pinned the TEI service to amd64 in Compose for Apple silicon, and verified live TEI embeddings via integration tests.
+- Files changed: ingest.py, docker-compose.yml, docker-compose.dev.yml, README.md, progress.txt
+- Testing: ruff format ingest.py; ruff check .; pytest (TEI integration test ran against live TEI)
+- **Learnings for future iterations:** The TEI CPU image is amd64-only and must be pinned in Compose on Apple silicon to run the integration test.
 ---

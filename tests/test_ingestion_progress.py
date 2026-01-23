@@ -59,7 +59,7 @@ def test_ingestion_reports_stage_progress(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
     monkeypatch.setattr(
         ingest,
-        "_ollama_embed",
+        "_tei_embed",
         lambda texts, **_kwargs: [
             ingest._hash_embedding(text, dim=vector_dim) for text in texts
         ],

@@ -1,7 +1,5 @@
-import json
 import os
 import uuid
-import urllib.request
 
 import pytest
 
@@ -17,46 +15,19 @@ def _qdrant_available(client):
     return True
 
 
-def _ollama_models(base_url):
-    url = f"{base_url.rstrip('/')}/api/tags"
-    try:
-        with urllib.request.urlopen(url, timeout=5) as response:
-            body = response.read().decode("utf-8")
-    except Exception:
-        return []
-    payload = json.loads(body)
-    return [
-        model.get("name") for model in payload.get("models", []) if model.get("name")
-    ]
-
-
-def _resolve_ollama_model(base_url):
-    models = _ollama_models(base_url)
-    if not models:
-        return None
-    configured = os.getenv("OLLAMA_MODEL")
-    if configured and configured in models:
-        return configured
-    return models[0]
-
-
-def test_end_to_end_ingestion_with_ollama_embeddings(monkeypatch):
+def test_end_to_end_ingestion_with_tei_embeddings(monkeypatch):
     client = ingest._get_qdrant_client()
     if not _qdrant_available(client):
         pytest.skip("Qdrant not available")
 
-    model = _resolve_ollama_model(ingest.OLLAMA_BASE_URL)
-    if not model:
-        pytest.skip("No Ollama models available")
-
     try:
-        ingest._ollama_embed(["ping"], model=model)
+        ingest._tei_embed(["ping"])
     except RuntimeError as exc:
-        pytest.skip(f"Ollama unavailable: {exc}")
+        pytest.skip(f"TEI unavailable: {exc}")
 
-    collection_name = f"test_ollama_ingest_{uuid.uuid4().hex}"
+    collection_name = f"test_tei_ingest_{uuid.uuid4().hex}"
     monkeypatch.setattr(ingest, "QDRANT_COLLECTION", collection_name)
-    monkeypatch.setattr(ingest, "OLLAMA_MODEL", model)
+    monkeypatch.setattr(ingest, "TEI_MODEL", os.getenv("TEI_MODEL", ingest.TEI_MODEL))
 
     epub_path = os.path.join("tests", "fixtures", "minimal.epub")
     book_hash = ingest.get_file_hash(epub_path)

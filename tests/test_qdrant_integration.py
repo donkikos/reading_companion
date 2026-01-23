@@ -40,7 +40,7 @@ def test_qdrant_upsert_accepts_point_ids():
             return [ingest._hash_embedding(text, dim=vector_dim) for text in texts]
 
         with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(ingest, "_ollama_embed", fake_embed)
+            mp.setattr(ingest, "_tei_embed", fake_embed)
             points, resolved_dim = ingest._build_qdrant_points([payload], vector_dim)
         assert resolved_dim == vector_dim
         client.upsert(collection_name=collection_name, points=points)

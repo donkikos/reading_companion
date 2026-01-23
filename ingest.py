@@ -22,10 +22,10 @@ QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_PATH = os.getenv("QDRANT_PATH")
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "BAAI/bge-base-en-v1.5")
-_RAW_OLLAMA_EMBED_DIM = os.getenv("OLLAMA_EMBED_DIM")
-OLLAMA_EMBED_DIM = int(_RAW_OLLAMA_EMBED_DIM) if _RAW_OLLAMA_EMBED_DIM else None
+TEI_BASE_URL = os.getenv("TEI_BASE_URL", "http://localhost:8080")
+TEI_MODEL = os.getenv("TEI_MODEL", "BAAI/bge-base-en-v1.5")
+_RAW_TEI_BATCH_SIZE = os.getenv("TEI_BATCH_SIZE")
+TEI_BATCH_SIZE = int(_RAW_TEI_BATCH_SIZE) if _RAW_TEI_BATCH_SIZE else 32
 
 INGESTION_STAGES = (
     ("hashing", "Hashing...", 5),
@@ -251,57 +251,57 @@ def _hash_embedding(text, dim):
     return values
 
 
-def _ollama_embed(texts, model=None, base_url=None, dimensions=None):
-    if model is None:
-        model = OLLAMA_MODEL
+def _tei_embed(texts, base_url=None, batch_size=None):
     if base_url is None:
-        base_url = OLLAMA_BASE_URL
+        base_url = TEI_BASE_URL
     if isinstance(texts, str):
         texts = [texts]
 
     if not texts:
         return []
 
-    payload = {"model": model, "input": texts}
-    if dimensions is not None:
-        payload["options"] = {"embedding_length": dimensions}
+    if batch_size is None:
+        batch_size = TEI_BATCH_SIZE
+    if batch_size is not None and batch_size <= 0:
+        raise ValueError("TEI_BATCH_SIZE must be a positive integer.")
 
-    url = f"{base_url.rstrip('/')}/api/embed"
-    data = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/json"}
-    )
+    url = f"{base_url.rstrip('/')}/embed"
+    embeddings = []
+    step = batch_size or len(texts)
+    for offset in range(0, len(texts), step):
+        batch = texts[offset : offset + step]
+        payload = {"inputs": batch if len(batch) > 1 else batch[0]}
+        data = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/json"}
+        )
 
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            body = response.read()
-    except urllib.error.HTTPError as exc:
-        message = exc.read().decode("utf-8") if exc.fp else ""
-        raise RuntimeError(
-            f"Ollama embedding request failed ({exc.code}): {message}"
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(
-            "Ollama embedding service is unavailable; ingestion cannot proceed."
-        ) from exc
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                body = response.read()
+        except urllib.error.HTTPError as exc:
+            message = exc.read().decode("utf-8") if exc.fp else ""
+            raise RuntimeError(
+                f"TEI embedding request failed ({exc.code}): {message}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(
+                "TEI embedding service is unavailable; ingestion cannot proceed."
+            ) from exc
 
-    result = json.loads(body)
-    embeddings = result.get("embeddings") or result.get("embedding")
-    if embeddings is None:
-        raise RuntimeError("Ollama embedding response missing embeddings.")
+        result = json.loads(body)
+        if not isinstance(result, list):
+            raise RuntimeError("TEI embedding response is not a list.")
 
-    if embeddings and isinstance(embeddings[0], (int, float)):
-        embeddings = [embeddings]
+        if result and isinstance(result[0], (int, float)):
+            batch_embeddings = [result]
+        else:
+            batch_embeddings = result
 
-    if len(embeddings) != len(texts):
-        raise RuntimeError("Ollama embedding response length mismatch.")
+        if len(batch_embeddings) != len(batch):
+            raise RuntimeError("TEI embedding response length mismatch.")
 
-    if dimensions is not None:
-        for vector in embeddings:
-            if len(vector) != dimensions:
-                raise ValueError(
-                    f"Ollama embedding dimension mismatch: {len(vector)} != {dimensions}"
-                )
+        embeddings.extend(batch_embeddings)
 
     return embeddings
 
@@ -377,18 +377,18 @@ def _build_qdrant_points(payloads, vector_dim):
         return [], vector_dim
 
     texts = [payload["text"] for payload in payloads]
-    embeddings = _ollama_embed(texts, dimensions=vector_dim or OLLAMA_EMBED_DIM)
+    embeddings = _tei_embed(texts)
     if not embeddings:
-        raise RuntimeError("Ollama embeddings are empty.")
+        raise RuntimeError("TEI embeddings are empty.")
 
     resolved_dim = len(embeddings[0])
     for vector in embeddings:
         if len(vector) != resolved_dim:
-            raise ValueError("Ollama returned inconsistent embedding dimensions.")
+            raise ValueError("TEI returned inconsistent embedding dimensions.")
 
     if vector_dim is not None and resolved_dim != vector_dim:
         raise ValueError(
-            f"Ollama embedding dimension {resolved_dim} does not match "
+            f"TEI embedding dimension {resolved_dim} does not match "
             f"Qdrant vector size {vector_dim}"
         )
 
@@ -464,7 +464,7 @@ def ingest_epub(epub_path, progress_callback=None):
     chunks = create_fixed_window_chunks(stream)
     progress.stage("chunking", 100)
     chunk_payloads = build_chunk_payloads(book_hash, stream, chunks)
-    embedding_model = OLLAMA_MODEL
+    embedding_model = TEI_MODEL
     embedding_dim = None
 
     if chunk_payloads:
