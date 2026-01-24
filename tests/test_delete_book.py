@@ -66,3 +66,44 @@ def test_reingest_updates_path_when_final_exists(monkeypatch, tmp_path):
 
     assert db.get_book(book_hash)["filepath"] == str(final_path)
     assert not temp_path.exists()
+
+
+def test_delete_book_missing_returns_404(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    fake_qdrant = _FakeQdrantClient()
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+
+    client = TestClient(main.app)
+    response = client.delete("/books/missing-book")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Book not found"
+    assert fake_qdrant.deleted is False
+
+
+def test_delete_book_qdrant_unavailable(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    epub_path = tmp_path / "book.epub"
+    epub_path.write_bytes(b"fake")
+    book_hash = "book123"
+    db.add_book(book_hash, "Title", "Author", str(epub_path), 10)
+
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: object())
+
+    def _raise_unavailable(_client):
+        raise RuntimeError("Qdrant is unavailable; ingestion cannot proceed.")
+
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", _raise_unavailable)
+
+    client = TestClient(main.app)
+    response = client.delete(f"/books/{book_hash}")
+
+    assert response.status_code == 503
+    assert "Qdrant is unavailable" in response.json()["detail"]

@@ -61,3 +61,58 @@ def test_sync_updates_cursor_from_qdrant_payload(monkeypatch, tmp_path):
     assert payload["status"] == "synced"
     assert payload["seq_id"] == 10
     assert db.get_cursor(book_hash) == 10
+
+
+def test_sync_returns_no_match_when_empty(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    book_hash = "book123"
+    db.add_book(book_hash, "Title", "Author", "/tmp/book.epub", 50)
+    db.add_chapters([(book_hash, 0, "Chapter 1", 0, 49)])
+
+    fake_qdrant = _FakeQdrantClient([])
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+    monkeypatch.setattr(ingest, "_tei_embed", lambda _text, **_kwargs: [[0.1, 0.2]])
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/sync",
+        json={
+            "book_hash": book_hash,
+            "text": "brown fox",
+            "cfi": "epubcfi(/6/2[chap01]!/4/1:0)",
+        },
+    )
+
+    assert response.status_code == 404
+    payload = response.json()
+    assert payload["status"] == "no_match"
+
+
+def test_sync_qdrant_unavailable(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: object())
+
+    def _raise_unavailable(_client):
+        raise RuntimeError("Qdrant is unavailable; ingestion cannot proceed.")
+
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", _raise_unavailable)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/sync",
+        json={
+            "book_hash": "book123",
+            "text": "brown fox",
+            "cfi": "epubcfi(/6/2[chap01]!/4/1:0)",
+        },
+    )
+
+    assert response.status_code == 503
+    assert "Qdrant is unavailable" in response.json()["detail"]
