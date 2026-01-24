@@ -28,12 +28,12 @@ if [[ -f /.dockerenv ]] || [[ "${IN_CONTAINER:-}" == "1" ]]; then
   cat ralph_prompt.md | codex exec --dangerously-bypass-approvals-and-sandbox 2>&1 | tee "$log"
 
   success_line=$(grep -m1 -E '^<promise>US_SUCCESS: US-[0-9]+</promise>$' "$log" || true)
+  complete_line=$(grep -m1 -E '^<promise>COMPLETE</promise>$' "$log" || true)
   if [[ -z "$success_line" ]]; then
     echo "User story not fully completed; missing success marker."
     exit 1
   fi
-
-  if grep -q "^<promise>COMPLETE</promise>$" "$log"; then
+  if [[ -n "$complete_line" ]]; then
     echo "PRD complete, exiting."
     exit 0
   fi

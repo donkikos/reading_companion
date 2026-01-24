@@ -18,6 +18,7 @@ If priority field is missing from user story, this should be the one YOU decide 
    - After editing, re-open `prd.json` and confirm the intended `id` now has `"passes": true` and no other story changed.
 10. If checks pass, commit ALL changes (including `progress.txt` and any `prd.json` updates) with message: `feat: [Story ID] - [Story Title]`
 11. After the successful commit, output a single line: <promise> + US_SUCCESS: [Story ID] + </promise> (concatenate exactly, no spaces)
+12. If ALL stories are now complete, output a second line immediately after: <promise> + COMPLETE + </promise> (concatenate exactly, no spaces)
 
 ## Progress Report Format
 
@@ -98,10 +99,11 @@ A frontend story is NOT complete until browser verification passes.
 
 After completing a user story, check if ALL stories have `passes: true`.
 
-If ALL stories within the PRD (prd.json) are complete and passing (and each has all acceptance criteria verified), reply with:
-<promise> + COMPLETE + </promise> (concatenate exactly, no spaces)
+If ALL stories within the PRD (prd.json) are complete and passing (and each has all acceptance criteria verified), reply with TWO lines, in this order:
+<promise> + US_SUCCESS: [Story ID] + </promise>
+<promise> + COMPLETE + </promise>
 
-If there are still stories with `passes: false`, end your response normally (another iteration will pick up the next story).
+If there are still stories with `passes: false`, reply with ONLY the US_SUCCESS line.
 
 ## Important
 
