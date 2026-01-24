@@ -14,6 +14,8 @@ If priority field is missing from user story, this should be the one YOU decide 
 7. Update AGENTS.md files if you discover reusable patterns (see below)
 8. Append your progress to `progress.txt`
 9. Only after ALL acceptance-criteria checklist items for the story are explicitly verified as completed (including required browser verification, if applicable) AND all quality checks pass, update the PRD to set `passes: true` for the completed story; if any required tool/resource is unavailable, do not mark complete or emit US_SUCCESS
+   - When updating `prd.json`, **anchor the edit to the exact story `id`** (e.g., locate the block for `id: "US-020"` and only flip its `passes` field). Do **not** use a generic search/replace for `"passes": false`.
+   - After editing, re-open `prd.json` and confirm the intended `id` now has `"passes": true` and no other story changed.
 10. If checks pass, commit ALL changes (including `progress.txt` and any `prd.json` updates) with message: `feat: [Story ID] - [Story Title]`
 11. After the successful commit, output a single line: <promise> + US_SUCCESS: [Story ID] + </promise> (concatenate exactly, no spaces)
 
