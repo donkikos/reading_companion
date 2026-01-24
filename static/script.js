@@ -59,7 +59,8 @@ function uploadBook(e) {
     formData.append('file', file);
 
     const list = document.getElementById('book-list');
-    list.innerHTML = '<div class="progress-container"><div id="progress-bar" style="width:0%; height:20px; background:green;"></div></div><p id="progress-text">Uploading...</p>';
+    list.innerHTML = '<p id="progress-text">Uploading...</p><p id="progress-detail"></p>';
+    document.querySelectorAll('.progress-container, #progress-bar').forEach(el => el.remove());
 
     fetch('/upload', { method: 'POST', body: formData })
         .then(res => res.json())
@@ -103,13 +104,21 @@ function confirmDelete(book, card) {
 function pollTask(taskId) {
     const interval = setInterval(() => {
         fetch(`/tasks/${taskId}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    const err = new Error(`Task fetch failed (${res.status})`);
+                    err.status = res.status;
+                    throw err;
+                }
+                return res.json();
+            })
             .then(task => {
-                const bar = document.getElementById('progress-bar');
                 const text = document.getElementById('progress-text');
+                const detail = document.getElementById('progress-detail');
+                document.querySelectorAll('.progress-container, #progress-bar').forEach(el => el.remove());
 
-                if (bar) bar.style.width = task.progress + '%';
-                if (text) text.innerText = task.message + ` (${task.progress}%)`;
+                if (text) text.innerText = task.message;
+                if (detail) detail.innerText = task.detail || '';
 
                 if (task.status === 'completed') {
                     clearInterval(interval);
@@ -118,6 +127,20 @@ function pollTask(taskId) {
                     clearInterval(interval);
                     if (text) text.innerText = "Error: " + task.error;
                 }
+            })
+            .catch(err => {
+                clearInterval(interval);
+                const text = document.getElementById('progress-text');
+                const detail = document.getElementById('progress-detail');
+                if (text) {
+                    if (err.status === 404) {
+                        text.innerText = "Task disappeared. Refreshing library...";
+                    } else {
+                        text.innerText = "Error checking task status.";
+                    }
+                }
+                if (detail) detail.innerText = '';
+                loadLibrary();
             });
     }, 1000);
 }

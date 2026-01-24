@@ -27,7 +27,9 @@ QDRANT_PATH = os.getenv("QDRANT_PATH")
 TEI_BASE_URL = os.getenv("TEI_BASE_URL", "http://localhost:8080")
 TEI_MODEL = os.getenv("TEI_MODEL", "BAAI/bge-base-en-v1.5")
 _RAW_TEI_BATCH_SIZE = os.getenv("TEI_BATCH_SIZE")
-TEI_BATCH_SIZE = int(_RAW_TEI_BATCH_SIZE) if _RAW_TEI_BATCH_SIZE else 32
+TEI_BATCH_SIZE = int(_RAW_TEI_BATCH_SIZE) if _RAW_TEI_BATCH_SIZE else 8
+_RAW_TEI_TIMEOUT = os.getenv("TEI_TIMEOUT")
+TEI_TIMEOUT = float(_RAW_TEI_TIMEOUT) if _RAW_TEI_TIMEOUT else 30.0
 
 INGESTION_STAGES = (
     ("hashing", "Hashing...", 5),
@@ -76,22 +78,20 @@ def _get_metrics_logger():
 class IngestionProgress:
     def __init__(self, callback):
         self._callback = callback
-        self._last_percent = -1
 
-    def stage(self, stage_key, stage_percent, message=None):
+    def stage(self, stage_key, stage_percent, message=None, detail=None):
         if not self._callback:
             return
 
-        start, end, default_label = INGESTION_STAGE_RANGES[stage_key]
+        _start, _end, default_label = INGESTION_STAGE_RANGES[stage_key]
         stage_percent = max(0, min(100, stage_percent))
-        overall = start + ((end - start) * (stage_percent / 100))
-        overall = int(round(overall))
-        if overall < self._last_percent:
-            overall = self._last_percent
-        self._last_percent = overall
-        label = message or default_label
         stage_index = INGESTION_STAGE_INDEX[stage_key]
-        self._callback(f"{stage_index}/{INGESTION_STAGE_TOTAL} {label}", overall)
+        label = message or default_label
+        self._callback(
+            f"({stage_index}/{INGESTION_STAGE_TOTAL}) {label}",
+            stage_percent,
+            detail,
+        )
 
 
 def get_file_hash(filepath):
@@ -309,7 +309,7 @@ def _hash_embedding(text, dim):
     return values
 
 
-def _tei_embed(texts, base_url=None, batch_size=None):
+def _tei_embed(texts, base_url=None, batch_size=None, progress_callback=None):
     if base_url is None:
         base_url = TEI_BASE_URL
     if isinstance(texts, str):
@@ -326,7 +326,10 @@ def _tei_embed(texts, base_url=None, batch_size=None):
     url = f"{base_url.rstrip('/')}/embed"
     embeddings = []
     step = batch_size or len(texts)
-    for offset in range(0, len(texts), step):
+    total = len(texts)
+    total_batches = (total + step - 1) // step
+    processed = 0
+    for batch_index, offset in enumerate(range(0, len(texts), step), start=1):
         batch = texts[offset : offset + step]
         payload = {"inputs": batch if len(batch) > 1 else batch[0]}
         data = json.dumps(payload).encode("utf-8")
@@ -335,7 +338,7 @@ def _tei_embed(texts, base_url=None, batch_size=None):
         )
 
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:
+            with urllib.request.urlopen(request, timeout=TEI_TIMEOUT) as response:
                 body = response.read()
         except urllib.error.HTTPError as exc:
             message = exc.read().decode("utf-8") if exc.fp else ""
@@ -360,6 +363,9 @@ def _tei_embed(texts, base_url=None, batch_size=None):
             raise RuntimeError("TEI embedding response length mismatch.")
 
         embeddings.extend(batch_embeddings)
+        processed += len(batch)
+        if progress_callback:
+            progress_callback(processed, total, batch_index, total_batches)
 
     return embeddings
 
@@ -494,14 +500,14 @@ def cleanup_orphaned_qdrant_chunks(limit=256):
     return sorted(orphaned)
 
 
-def _build_qdrant_points(payloads, vector_dim):
+def _build_qdrant_points(payloads, vector_dim, progress_callback=None):
     from qdrant_client.http import models as qmodels
 
     if not payloads:
         return [], vector_dim
 
     texts = [payload["text"] for payload in payloads]
-    embeddings = _tei_embed(texts)
+    embeddings = _tei_embed(texts, progress_callback=progress_callback)
     if not embeddings:
         raise RuntimeError("TEI embeddings are empty.")
 
@@ -573,8 +579,7 @@ def ingest_epub(epub_path, progress_callback=None):
     progress.stage("parsing", 0)
 
     def parsing_progress(message, percent):
-        detail = message.replace("Processing ", "")
-        progress.stage("parsing", percent, message=f"Parsing {detail}")
+        progress.stage("parsing", percent, detail=f"{percent}%")
 
     stream, chapters = build_sentence_stream(book, parsing_progress)
     progress.stage("parsing", 100)
@@ -592,7 +597,21 @@ def ingest_epub(epub_path, progress_callback=None):
         _ensure_qdrant_available(qdrant_client)
         progress.stage("embedding", 0)
         embedding_start = time.monotonic()
-        points, vector_dim = _build_qdrant_points(chunk_payloads, QDRANT_VECTOR_DIM)
+        def embedding_progress(processed, total, batch_index, total_batches):
+            if total <= 0:
+                return
+            percent = int((processed / total) * 100)
+            progress.stage(
+                "embedding",
+                percent,
+                detail=f"{percent}%",
+            )
+
+        points, vector_dim = _build_qdrant_points(
+            chunk_payloads,
+            QDRANT_VECTOR_DIM,
+            progress_callback=embedding_progress,
+        )
         embedding_seconds = time.monotonic() - embedding_start
         embedding_dim = vector_dim
         progress.stage("embedding", 100)

@@ -11,7 +11,8 @@ Required environment variables for embeddings:
 
 - `TEI_MODEL` (default: `BAAI/bge-base-en-v1.5`)
 - `TEI_BASE_URL` (default: `http://localhost:8080`)
-- `TEI_BATCH_SIZE` (default: `32`)
+- `TEI_BATCH_SIZE` (default: `8`)
+- `TEI_TIMEOUT` (default: `30`)
 
 The TEI container caches the model in a Docker volume (`tei_data`) so it is reused across restarts.
 

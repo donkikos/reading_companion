@@ -21,6 +21,15 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
 # Ensure books directory
 BOOKS_DIR = os.path.abspath(".data/books")
 os.makedirs(BOOKS_DIR, exist_ok=True)
@@ -45,9 +54,10 @@ def run_ingestion_task(task_id: str, file_path: str):
     tasks[task_id]["progress"] = 0
     tasks[task_id]["message"] = "Starting..."
 
-    def update_progress(msg, percent):
+    def update_progress(msg, percent, detail=None):
         tasks[task_id]["message"] = msg
         tasks[task_id]["progress"] = percent
+        tasks[task_id]["detail"] = detail
 
     try:
         book_hash = ingest.ingest_epub(file_path, progress_callback=update_progress)
@@ -65,11 +75,13 @@ def run_ingestion_task(task_id: str, file_path: str):
         tasks[task_id]["book_hash"] = book_hash
         tasks[task_id]["progress"] = 100
         tasks[task_id]["message"] = "Completed"
+        tasks[task_id]["detail"] = None
 
     except Exception as e:
         tasks[task_id]["status"] = "error"
         tasks[task_id]["error"] = str(e)
         tasks[task_id]["message"] = "Error"
+        tasks[task_id]["detail"] = None
         if os.path.exists(file_path):
             os.remove(file_path)
 
@@ -131,6 +143,11 @@ def get_task_status(task_id: str):
     if task_id not in tasks:
         raise HTTPException(status_code=404, detail="Task not found")
     return tasks[task_id]
+
+
+@app.get("/tasks")
+def list_tasks():
+    return tasks
 
 
 def normalize_text(text):
@@ -450,7 +467,7 @@ def verify_ingestion(request: VerifyIngestionRequest):
 
 
 app.mount("/files", StaticFiles(directory=BOOKS_DIR), name="files")
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/", NoCacheStaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn

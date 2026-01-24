@@ -22,3 +22,5 @@ hidden/
 **/tmp
 
 skills/.system/
+
+scripts/_temp_*.py
