@@ -4,6 +4,8 @@ import ebooklib
 import json
 import logging
 import os
+import sys
+import time
 import uuid
 import urllib.error
 import urllib.request
@@ -54,6 +56,21 @@ INGESTION_STAGE_INDEX = {
     key: index + 1 for index, (key, _label, _weight) in enumerate(INGESTION_STAGES)
 }
 INGESTION_STAGE_TOTAL = len(INGESTION_STAGES)
+
+
+def _get_metrics_logger():
+    metrics_logger = logging.getLogger("ingest.metrics")
+    if not metrics_logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        metrics_logger.addHandler(handler)
+    else:
+        for handler in metrics_logger.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                handler.stream = sys.stdout
+    metrics_logger.setLevel(logging.DEBUG)
+    metrics_logger.propagate = False
+    return metrics_logger
 
 
 class IngestionProgress:
@@ -512,6 +529,10 @@ def _build_qdrant_points(payloads, vector_dim):
 def ingest_epub(epub_path, progress_callback=None):
     """Parse EPUB, tokenize sentences, and store in Qdrant & SQLite."""
     print(f"Ingesting: {epub_path}")
+    ingest_start = time.monotonic()
+    embedding_seconds = 0.0
+    qdrant_seconds = 0.0
+    chunks_processed = 0
     progress = IngestionProgress(progress_callback)
 
     # 1. Hashing and Deduplication
@@ -562,6 +583,7 @@ def ingest_epub(epub_path, progress_callback=None):
     chunks = create_fixed_window_chunks(stream, chapters=chapters)
     progress.stage("chunking", 100)
     chunk_payloads = build_chunk_payloads(book_hash, stream, chunks)
+    chunks_processed = len(chunk_payloads)
     embedding_model = TEI_MODEL
     embedding_dim = None
 
@@ -569,14 +591,18 @@ def ingest_epub(epub_path, progress_callback=None):
         qdrant_client = _get_qdrant_client()
         _ensure_qdrant_available(qdrant_client)
         progress.stage("embedding", 0)
+        embedding_start = time.monotonic()
         points, vector_dim = _build_qdrant_points(chunk_payloads, QDRANT_VECTOR_DIM)
+        embedding_seconds = time.monotonic() - embedding_start
         embedding_dim = vector_dim
         progress.stage("embedding", 100)
         _ensure_qdrant_collection(qdrant_client, QDRANT_COLLECTION, vector_dim)
         if is_reingest:
             _delete_qdrant_book_chunks(qdrant_client, QDRANT_COLLECTION, book_hash)
         progress.stage("qdrant", 0)
+        qdrant_start = time.monotonic()
         qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=points)
+        qdrant_seconds = time.monotonic() - qdrant_start
         progress.stage("qdrant", 100)
 
     progress.stage("metadata", 0)
@@ -613,6 +639,19 @@ def ingest_epub(epub_path, progress_callback=None):
         db.update_cursor(book_hash, 0)
 
     progress.stage("metadata", 100)
+
+    total_seconds = time.monotonic() - ingest_start
+    chunks_per_second = (chunks_processed / total_seconds) if total_seconds else 0.0
+    metrics = {
+        "event": "ingestion_metrics",
+        "book_id": book_hash,
+        "total_time_s": round(total_seconds, 3),
+        "embedding_time_s": round(embedding_seconds, 3),
+        "qdrant_upsert_time_s": round(qdrant_seconds, 3),
+        "chunks_processed": chunks_processed,
+        "chunks_per_sec": round(chunks_per_second, 3),
+    }
+    _get_metrics_logger().debug(json.dumps(metrics))
 
     print(f"Finished ingesting. ID: {book_hash}. Total sequences: {len(stream)}")
     return book_hash

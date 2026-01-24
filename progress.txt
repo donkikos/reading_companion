@@ -4,6 +4,7 @@
 - Ingestion progress percentages are derived from total sentence counts computed before streaming.
 - Use `IngestionProgress` stage ranges to map full-pipeline progress updates to UI percentages.
 - Ingestion progress messages are prefixed with stage index `i/N` to drive the UI progress display.
+- Ingestion timing metrics are logged as JSON at debug level via the `ingest.metrics` logger to stdout.
 - Check Qdrant availability with `_ensure_qdrant_available` before collection operations to fail fast.
 - In ingestion tests, use fake Qdrant clients to avoid external service dependencies.
 - Set `QDRANT_PATH` to use a local Qdrant store without a running server.
@@ -146,4 +147,10 @@
 - Files changed: AGENTS.md, ingest.py, main.py, server.py, requirements.txt, docs/arch.md, docs/impl_plan.md, tests/test_delete_book.py, tests/test_ingestion_fixture.py, tests/test_ingestion_progress.py, tests/test_tei_integration.py, tests/test_sync_qdrant.py, progress.txt
 - Testing: ruff format ingest.py main.py server.py tests/test_delete_book.py tests/test_ingestion_fixture.py tests/test_ingestion_progress.py tests/test_tei_integration.py tests/test_sync_qdrant.py; ruff check .; pytest
 - **Learnings for future iterations:** Use Qdrant payload `sentences` + `pos_start` to map semantic matches back to precise `seq_id` updates when Chroma is removed.
+---
+## 2026-01-24 17:53 - US-016
+- What was implemented: Added ingestion timing metrics logged as JSON at debug level with total/embedding/Qdrant timings plus chunk throughput; added coverage for metrics logging.
+- Files changed: ingest.py, tests/test_ingestion_metrics.py, progress.txt
+- Testing: ruff format ingest.py tests/test_ingestion_metrics.py; ruff check .; pytest
+- **Learnings for future iterations:** The ingestion metrics logger must refresh its stdout stream to remain compatible with pytest capture.
 ---
