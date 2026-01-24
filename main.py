@@ -218,14 +218,25 @@ async def sync_position(request: SyncRequest):
             )
         ]
     )
-    results = qdrant_client.search(
-        collection_name=ingest.QDRANT_COLLECTION,
-        query_vector=query_vector,
-        limit=3,
-        query_filter=book_filter,
-        with_payload=True,
-        with_vectors=False,
-    )
+    if hasattr(qdrant_client, "search"):
+        results = qdrant_client.search(
+            collection_name=ingest.QDRANT_COLLECTION,
+            query_vector=query_vector,
+            limit=3,
+            query_filter=book_filter,
+            with_payload=True,
+            with_vectors=False,
+        )
+    else:
+        query_response = qdrant_client.query_points(
+            collection_name=ingest.QDRANT_COLLECTION,
+            query=query_vector,
+            limit=3,
+            query_filter=book_filter,
+            with_payload=True,
+            with_vectors=False,
+        )
+        results = query_response.points
 
     if not results:
         print("Result: No semantic match found in vector DB.")
@@ -261,12 +272,15 @@ async def sync_position(request: SyncRequest):
         db.update_cursor(request.book_hash, seq_id, cfi=request.cfi)
 
         # Fetch updated details to return chapter info
-        details = db.get_book_details(request.book_hash)
+        details = db.get_book_details(request.book_hash) or {}
+        chapter_title = None
+        if isinstance(details, dict):
+            chapter_title = details.get("chapter_title")
 
         return {
             "status": "synced",
             "seq_id": seq_id,
-            "chapter_title": details["chapter_title"],
+            "chapter_title": chapter_title,
             "score": score,
         }
     else:
