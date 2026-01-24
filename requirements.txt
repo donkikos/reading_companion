@@ -1,9 +1,10 @@
-fastapi
-uvicorn
-python-multipart
-ebooklib
+# Generated from pyproject.toml [project] dependencies.
 beautifulsoup4
-spacy
-pydantic
+ebooklib
+fastapi
 mcp
+pydantic
+python-multipart
 qdrant-client
+spacy
+uvicorn

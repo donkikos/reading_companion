@@ -24,10 +24,26 @@ if sync_playwright is None or not BASE_URL:
     )
 
 
+def _launch_browser(playwright):
+    try:
+        return playwright.chromium.launch()
+    except Exception:
+        brave_path = os.environ.get(
+            "BRAVE_EXECUTABLE",
+            "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+        )
+        if Path(brave_path).exists():
+            return playwright.chromium.launch(executable_path=brave_path)
+        raise
+
+
 @contextmanager
 def _page():
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
+        try:
+            browser = _launch_browser(playwright)
+        except Exception as exc:
+            pytest.skip(f"Playwright chromium not available and Brave missing: {exc}")
         page = browser.new_page()
         page.goto(BASE_URL, wait_until="networkidle")
         yield page
@@ -70,3 +86,16 @@ def test_ui_ingestion_progress_and_error_state():
             "document.querySelector('#progress-text').innerText.startsWith('Error')",
             timeout=120000,
         )
+
+
+def test_ui_upload_resume_via_task_url():
+    with _page() as page:
+        _upload_epub(page, VALID_EPUB)
+        page.wait_for_selector("#progress-text")
+
+        url = page.url
+        assert "task=" in url
+
+        page.reload(wait_until="domcontentloaded")
+        page.wait_for_selector("#progress-text", timeout=2000)
+        assert "task=" in page.url

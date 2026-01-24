@@ -24,3 +24,5 @@ hidden/
 skills/.system/
 
 scripts/_temp_*.py
+
+*.egg-info/

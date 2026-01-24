@@ -1,5 +1,14 @@
 // Library Logic
-document.addEventListener('DOMContentLoaded', loadLibrary);
+document.addEventListener('DOMContentLoaded', () => {
+    const taskId = new URLSearchParams(window.location.search).get('task');
+    if (taskId) {
+        const list = document.getElementById('book-list');
+        list.innerHTML = '<p id="progress-text">Resuming upload...</p><p id="progress-detail"></p>';
+        pollTask(taskId);
+        return;
+    }
+    loadLibrary();
+});
 
 const fileInput = document.getElementById('file-upload');
 fileInput.addEventListener('change', uploadBook);
@@ -65,7 +74,9 @@ function uploadBook(e) {
     fetch('/upload', { method: 'POST', body: formData })
         .then(res => res.json())
         .then(data => {
-            pollTask(data.task_id);
+            const taskId = data.task_id;
+            window.history.replaceState(null, '', `/?task=${encodeURIComponent(taskId)}`);
+            pollTask(taskId);
         })
         .catch(err => {
             console.error(err);

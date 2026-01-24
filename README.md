@@ -22,6 +22,11 @@ The TEI container caches the model in a Docker volume (`tei_data`) so it is reus
 - Dev app (fast reload): `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build`
 - Dev app + codex: `docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.codex.yml up --build`
 
+## Python Setup
+
+- Main deps: `pip install -e .`
+- Dev deps: `pip install -e ".[dev]"`
+
 ## Vector Storage
 
 Chunk embeddings and payloads are stored in Qdrant. ChromaDB is no longer used for ingestion or sync.
