@@ -23,14 +23,14 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Parse the EPUB into an ordered list of sentences S0..SN.
-- [ ] Sentence IDs are monotonic and contiguous for each book.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Parse the EPUB into an ordered list of sentences S0..SN.
+- [x] Sentence IDs are monotonic and contiguous for each book.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-002: Create fixed-window chunks
 
@@ -38,15 +38,15 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Create chunks using a fixed window of 8 sentences with overlap of 2.
-- [ ] Each chunk covers the ordered sentence-id interval `[pos_start..pos_end]`.
-- [ ] For each chunk, `sentences[k]` maps to `sid = pos_start + k`.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Create chunks using a fixed window of 8 sentences with overlap of 2.
+- [x] Each chunk covers the ordered sentence-id interval `[pos_start..pos_end]`.
+- [x] For each chunk, `sentences[k]` maps to `sid = pos_start + k`.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-003: Store chunk payloads in Qdrant
 
@@ -54,15 +54,15 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Store payload fields: `book_id`, `chapter_index`, `pos_start`, `pos_end`, `sentences`, `text`.
-- [ ] Chunk embeddings are computed from the full chunk `text`.
-- [ ] Qdrant points are written for each chunk of the current book.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Store payload fields: `book_id`, `chapter_index`, `pos_start`, `pos_end`, `sentences`, `text`.
+- [x] Chunk embeddings are computed from the full chunk `text`.
+- [x] Qdrant points are written for each chunk of the current book.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-004: Replace chunks on re-upload
 
@@ -70,14 +70,14 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Re-ingestion deletes or replaces all prior chunks for the same `book_id`.
-- [ ] No duplicate chunks remain after re-ingest.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Re-ingestion deletes or replaces all prior chunks for the same `book_id`.
+- [x] No duplicate chunks remain after re-ingest.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-005: Track ingestion progress
 
@@ -85,14 +85,14 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Progress is tracked as a best-effort percentage during ingestion.
-- [ ] Progress is based on sentences processed out of total.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Progress is tracked as a best-effort percentage during ingestion.
+- [x] Progress is based on sentences processed out of total.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-006: Fail clearly if Qdrant is unavailable
 
@@ -100,14 +100,14 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Ingestion fails with an explicit error when Qdrant cannot be reached.
-- [ ] Partial ingestion is not marked as successful.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Ingestion fails with an explicit error when Qdrant cannot be reached.
+- [x] Partial ingestion is not marked as successful.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-007: Verify ingestion via API
 
@@ -115,19 +115,19 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Provide an API endpoint that accepts `book_id` and verifies Qdrant ingestion for that book.
-- [ ] The endpoint recomputes expected chunk count from the sentence stream and chunking params.
-- [ ] The endpoint queries Qdrant by `book_id` and confirms the stored count matches expected.
-- [ ] The endpoint validates payload fields and `pos_start`/`pos_end` monotonicity on a sample of chunks.
-- [ ] The endpoint returns a clear pass/fail response with details on mismatches.
-- [ ] If Qdrant is unavailable, the endpoint returns an explicit error.
-- [ ] Restart the app server after implementing this story before verifying the endpoint.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Provide an API endpoint that accepts `book_id` and verifies Qdrant ingestion for that book.
+- [x] The endpoint recomputes expected chunk count from the sentence stream and chunking params.
+- [x] The endpoint queries Qdrant by `book_id` and confirms the stored count matches expected.
+- [x] The endpoint validates payload fields and `pos_start`/`pos_end` monotonicity on a sample of chunks.
+- [x] The endpoint returns a clear pass/fail response with details on mismatches.
+- [x] If Qdrant is unavailable, the endpoint returns an explicit error.
+- [x] Restart the app server after implementing this story before verifying the endpoint.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-008: Single command to launch app + Qdrant
 
@@ -135,16 +135,16 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Provide one `docker compose` command that starts the FastAPI app and Qdrant.
-- [ ] The command performs a health check that confirms the app responds and Qdrant is reachable.
-- [ ] The command exits cleanly and stops both services.
-- [ ] Restart the app server after implementing this story before running health checks.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Provide one `docker compose` command that starts the FastAPI app and Qdrant.
+- [x] The command performs a health check that confirms the app responds and Qdrant is reachable.
+- [x] The command exits cleanly and stops both services.
+- [x] Restart the app server after implementing this story before running health checks.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-009: Add EPUB fixture for automated ingestion tests
 
@@ -152,16 +152,16 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Add a fixture EPUB at `tests/fixtures/minimal.epub` with multiple chapters and paragraphs.
-- [ ] Tests can ingest the fixture and verify Qdrant chunk counts using the verification API.
-- [ ] Restart the app server after implementing this story before running the ingestion tests.
-- [ ] The fixture stays ASCII-only and stable across runs.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Add a fixture EPUB at `tests/fixtures/minimal.epub` with multiple chapters and paragraphs.
+- [x] Tests can ingest the fixture and verify Qdrant chunk counts using the verification API.
+- [x] Restart the app server after implementing this story before running the ingestion tests.
+- [x] The fixture stays ASCII-only and stable across runs.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-010: Delete a book with confirmation
 
@@ -169,18 +169,18 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Provide a delete action in the library UI that opens a confirmation dialog.
-- [ ] Confirming delete removes the book file and all stored data (SQLite metadata, reading state, chapters, Chroma docs, Qdrant chunks).
-- [ ] Cancelling delete leaves the book untouched.
-- [ ] The library UI updates to remove the deleted book without a full reload.
-- [ ] Restart the app server after implementing this story before verifying the UI.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using MCP
+- [x] Provide a delete action in the library UI that opens a confirmation dialog.
+- [x] Confirming delete removes the book file and all stored data (SQLite metadata, reading state, chapters, Chroma docs, Qdrant chunks).
+- [x] Cancelling delete leaves the book untouched.
+- [x] The library UI updates to remove the deleted book without a full reload.
+- [x] Restart the app server after implementing this story before verifying the UI.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
+- [x] Verify in browser using MCP
 
 ### US-011: End-to-end ingestion progress in the UI
 
@@ -188,23 +188,23 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Uploading a book shows progress messages and percentage updates in the library UI.
-- [ ] The UI surfaces stage transitions (hashing, parsing, chunking, embedding, Qdrant upsert, metadata save).
-- [ ] The progress percentage reflects the full ingestion pipeline, not only sentence streaming.
-- [ ] Sentence-based progress may be tracked internally, but the UI must reflect the full pipeline only.
-- [ ] The UI shows top-level stage progress as `i/N` with an overall progress number.
-- [ ] Lower-level percent is optional (e.g., sentence parsing) when reasonable.
-- [ ] The task status reaches "completed" only after all storage steps finish.
-- [ ] Errors during ingestion surface a clear error message in the UI.
-- [ ] If any ingestion error occurs during verification, the story fails verification.
-- [ ] Restart the app server after implementing this story before verifying the UI.
-- [ ] Verify in browser using MCP.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Uploading a book shows progress messages and percentage updates in the library UI.
+- [x] The UI surfaces stage transitions (hashing, parsing, chunking, embedding, Qdrant upsert, metadata save).
+- [x] The progress percentage reflects the full ingestion pipeline, not only sentence streaming.
+- [x] Sentence-based progress may be tracked internally, but the UI must reflect the full pipeline only.
+- [x] The UI shows top-level stage progress as `i/N` with an overall progress number.
+- [x] Lower-level percent is optional (e.g., sentence parsing) when reasonable.
+- [x] The task status reaches "completed" only after all storage steps finish.
+- [x] Errors during ingestion surface a clear error message in the UI.
+- [x] If any ingestion error occurs during verification, the story fails verification.
+- [x] Restart the app server after implementing this story before verifying the UI.
+- [x] Verify in browser using MCP.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-012: Configure embedding provider for ingestion
 
@@ -212,18 +212,18 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Embeddings are generated by calling Ollama `/api/embed` during ingestion.
-- [ ] The embedding model name and base URL are configurable (default model: `BAAI/bge-base-en-v1.5`).
-- [ ] Optional embedding dimensions are configurable (when supported by Ollama).
-- [ ] If the embedding service is unavailable, ingestion fails with a clear error.
-- [ ] Ollama runs as a docker compose service and uses a volume for model storage.
-- [ ] Add local Ollama model cache paths to `.gitignore`.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Embeddings are generated by calling Ollama `/api/embed` during ingestion.
+- [x] The embedding model name and base URL are configurable (default model: `BAAI/bge-base-en-v1.5`).
+- [x] Optional embedding dimensions are configurable (when supported by Ollama).
+- [x] If the embedding service is unavailable, ingestion fails with a clear error.
+- [x] Ollama runs as a docker compose service and uses a volume for model storage.
+- [x] Add local Ollama model cache paths to `.gitignore`.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-013: Persist embedding metadata
 
@@ -231,14 +231,14 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] The ingestion pipeline records the embedding model name and dimensions used.
-- [ ] The ingestion pipeline documents that model changes require reindexing.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] The ingestion pipeline records the embedding model name and dimensions used.
+- [x] The ingestion pipeline documents that model changes require reindexing.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-014: Use Ollama embeddings for Qdrant vectors
 
@@ -246,14 +246,14 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Qdrant vectors are generated from Ollama embeddings of the full chunk text (not hash placeholders).
-- [ ] Run an end-to-end ingestion using a live Ollama model and confirm embeddings are stored in Qdrant.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Qdrant vectors are generated from Ollama embeddings of the full chunk text (not hash placeholders).
+- [x] Run an end-to-end ingestion using a live Ollama model and confirm embeddings are stored in Qdrant.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-015: Remove Chroma ingestion
 
@@ -261,17 +261,17 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Ingestion no longer writes documents or metadata to Chroma.
-- [ ] All Chroma-related code paths are removed.
-- [ ] Delete flow does not attempt Chroma cleanup once Chroma is removed.
-- [ ] `/sync` uses Qdrant (not Chroma) for matching and position updates.
-- [ ] Removal is documented and tests are updated accordingly.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Ingestion no longer writes documents or metadata to Chroma.
+- [x] All Chroma-related code paths are removed.
+- [x] Delete flow does not attempt Chroma cleanup once Chroma is removed.
+- [x] `/sync` uses Qdrant (not Chroma) for matching and position updates.
+- [x] Removal is documented and tests are updated accordingly.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-016: Log ingestion timing metrics
 
@@ -279,18 +279,18 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Logs are structured JSON at debug level.
-- [ ] Logs include total ingestion time.
-- [ ] Logs include time spent generating embeddings.
-- [ ] Logs include time spent upserting to Qdrant.
-- [ ] Logs include chunks processed and chunks/sec.
-- [ ] Logs are emitted to stdout.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Logs are structured JSON at debug level.
+- [x] Logs include total ingestion time.
+- [x] Logs include time spent generating embeddings.
+- [x] Logs include time spent upserting to Qdrant.
+- [x] Logs include chunks processed and chunks/sec.
+- [x] Logs are emitted to stdout.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-017: Migrate embeddings away from Ollama to TEI (High Priority)
 
@@ -298,25 +298,25 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Replace the Ollama embedding dependency with a TEI service in Docker Compose.
-- [ ] Remove Ollama completely (compose service, env vars, code paths, docs/tests).
-- [ ] Use the CPU image `ghcr.io/huggingface/text-embeddings-inference:cpu-1.8.1` on macOS.
-- [ ] Switching to GPU is done by changing the Docker Compose image tag (no code changes).
-- [ ] TEI is configured to serve the target embedding model.
-- [ ] Ingestion embeddings are generated via TEI and succeed for a real EPUB upload.
-- [ ] TEI requests use the `/embed` endpoint and return an array of float arrays.
-- [ ] The embedding base URL and model name are configurable via environment variables (default model: `bge-base-en-v1.5`).
-- [ ] The model uses fixed dimensions; the configured Qdrant vector size matches the TEI embedding dimension.
-- [ ] The model is cached and reused across restarts (TEI model cache volume).
-- [ ] The app surfaces a clear error if the embedding service is unavailable.
-- [ ] Document in `README` the TEI image tag, how to switch to GPU via image tag, and required env vars (model name, base URL, batching).
-- [ ] Note that this story supersedes Ollama-specific stories (US-012/US-014) without changing their historical status in `prd.json`.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Replace the Ollama embedding dependency with a TEI service in Docker Compose.
+- [x] Remove Ollama completely (compose service, env vars, code paths, docs/tests).
+- [x] Use the CPU image `ghcr.io/huggingface/text-embeddings-inference:cpu-1.8.1` on macOS.
+- [x] Switching to GPU is done by changing the Docker Compose image tag (no code changes).
+- [x] TEI is configured to serve the target embedding model.
+- [x] Ingestion embeddings are generated via TEI and succeed for a real EPUB upload.
+- [x] TEI requests use the `/embed` endpoint and return an array of float arrays.
+- [x] The embedding base URL and model name are configurable via environment variables (default model: `bge-base-en-v1.5`).
+- [x] The model uses fixed dimensions; the configured Qdrant vector size matches the TEI embedding dimension.
+- [x] The model is cached and reused across restarts (TEI model cache volume).
+- [x] The app surfaces a clear error if the embedding service is unavailable.
+- [x] Document in `README` the TEI image tag, how to switch to GPU via image tag, and required env vars (model name, base URL, batching).
+- [x] Note that this story supersedes Ollama-specific stories (US-012/US-014) without changing their historical status in `prd.json`.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-018: Chunking within chapter boundaries
 
@@ -324,16 +324,16 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] Chunks are created per-chapter using the same window/overlap params.
-- [ ] Chunks do not cross chapter boundaries.
-- [ ] The last partial chunk in each chapter is kept.
-- [ ] `chapter_index` always matches the chunk's chapter.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] Chunks are created per-chapter using the same window/overlap params.
+- [x] Chunks do not cross chapter boundaries.
+- [x] The last partial chunk in each chapter is kept.
+- [x] `chapter_index` always matches the chunk's chapter.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-019: Data consistency check on server launch
 
@@ -341,16 +341,16 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] On startup, scan local books in SQLite and remove Qdrant chunks for missing book IDs.
-- [ ] Cleanup runs before ingestion requests are accepted.
-- [ ] If Qdrant is unavailable, the server fails startup with a clear error.
-- [ ] Actions and errors are logged clearly.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] On startup, scan local books in SQLite and remove Qdrant chunks for missing book IDs.
+- [x] Cleanup runs before ingestion requests are accepted.
+- [x] If Qdrant is unavailable, the server fails startup with a clear error.
+- [x] Actions and errors are logged clearly.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ### US-020: Purge old ingested Qdrant data after TEI migration
 
@@ -358,14 +358,14 @@ Implement V2 ingestion that indexes EPUB content as multi-sentence chunks in Qdr
 
 **Acceptance Criteria:**
 
-- [ ] At the start of implementing this story, purge all existing Qdrant chunks via API calls or CLI commands.
-- [ ] Cleanup is logged clearly and is idempotent.
-- [ ] Run `ruff format` on changed Python files (line length 100)
-- [ ] Run `ruff check .` and ensure it passes
-- [ ] Add or update tests for this change
-- [ ] Tests pass
-- [ ] Run `pytest` and ensure it passes
-- [ ] Typecheck/lint passes
+- [x] At the start of implementing this story, purge all existing Qdrant chunks via API calls or CLI commands.
+- [x] Cleanup is logged clearly and is idempotent.
+- [x] Run `ruff format` on changed Python files (line length 100)
+- [x] Run `ruff check .` and ensure it passes
+- [x] Add or update tests for this change
+- [x] Tests pass
+- [x] Run `pytest` and ensure it passes
+- [x] Typecheck/lint passes
 
 ## Functional Requirements
 
