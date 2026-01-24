@@ -413,6 +413,24 @@ def _delete_qdrant_book_chunks(client, collection_name, book_id):
     return True
 
 
+def purge_qdrant_chunks():
+    qdrant_client = _get_qdrant_client()
+    try:
+        _ensure_qdrant_available(qdrant_client)
+    except RuntimeError as exc:
+        logger.error("Qdrant purge failed: %s", exc)
+        raise
+
+    collection_name = QDRANT_COLLECTION
+    if not qdrant_client.collection_exists(collection_name):
+        logger.info("Qdrant purge skipped; collection '%s' missing.", collection_name)
+        return False
+
+    qdrant_client.delete_collection(collection_name)
+    logger.info("Qdrant purge deleted collection '%s'.", collection_name)
+    return True
+
+
 def cleanup_orphaned_qdrant_chunks(limit=256):
     qdrant_client = _get_qdrant_client()
     try:

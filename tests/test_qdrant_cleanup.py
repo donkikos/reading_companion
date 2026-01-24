@@ -14,9 +14,13 @@ class _FakeQdrantClient:
         self._batches = batches
         self._index = 0
         self._collection_exists = collection_exists
+        self.deleted_collection = None
 
     def collection_exists(self, _collection_name):
         return self._collection_exists
+
+    def delete_collection(self, collection_name):
+        self.deleted_collection = collection_name
 
     def scroll(
         self,
@@ -84,3 +88,35 @@ def test_cleanup_orphaned_qdrant_chunks_raises_when_unavailable(monkeypatch):
 
     with pytest.raises(RuntimeError):
         ingest.cleanup_orphaned_qdrant_chunks()
+
+
+def test_purge_qdrant_chunks_deletes_collection(monkeypatch):
+    fake_client = _FakeQdrantClient([], collection_exists=True)
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_client)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+
+    deleted = ingest.purge_qdrant_chunks()
+    assert deleted is True
+    assert fake_client.deleted_collection == ingest.QDRANT_COLLECTION
+
+
+def test_purge_qdrant_chunks_skips_missing_collection(monkeypatch):
+    fake_client = _FakeQdrantClient([], collection_exists=False)
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_client)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+
+    deleted = ingest.purge_qdrant_chunks()
+    assert deleted is False
+    assert fake_client.deleted_collection is None
+
+
+def test_purge_qdrant_chunks_raises_when_unavailable(monkeypatch):
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: object())
+
+    def _raise_unavailable(_client):
+        raise RuntimeError("Qdrant is unavailable; ingestion cannot proceed.")
+
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", _raise_unavailable)
+
+    with pytest.raises(RuntimeError):
+        ingest.purge_qdrant_chunks()

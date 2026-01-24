@@ -9,8 +9,11 @@
 - Set `QDRANT_PATH` to use a local Qdrant store without a running server.
 - TEI embeddings use `/embed` with `TEI_BASE_URL`, and tests should stub `_tei_embed` for determinism.
 - TEI Docker image is amd64-only; `docker-compose.yml` pins `platform: linux/amd64` for the tei service.
+- For CI or local runs without TEI, set `TEI_BASE_URL=http://127.0.0.1:9` to skip TEI integration tests fast.
 - When evolving the SQLite schema, use `PRAGMA table_info` plus `ALTER TABLE` to add new columns.
 - Startup cleanup compares Qdrant payload `book_id`s to SQLite `books` and deletes orphaned chunks via scroll.
+- Use `ingest.purge_qdrant_chunks` (or `scripts/purge_qdrant.py`) for idempotent Qdrant resets.
+- For repo scripts that import top-level modules, set `PYTHONPATH=/app` when invoking them.
 
 ## 2026-01-13 18:56 - US-001
 - What was implemented: Added deterministic sentence stream builder with contiguous IDs and nav skipping; ingestion now uses it and added tests.
@@ -131,4 +134,10 @@
 - Files changed: ingest.py, main.py, tests/test_chunks.py, tests/test_qdrant_payloads.py, tests/test_verify_ingestion.py, prd.json, progress.txt
 - Testing: ruff format ingest.py main.py tests/test_chunks.py tests/test_qdrant_payloads.py tests/test_verify_ingestion.py; ruff check .; TEI_BASE_URL=http://127.0.0.1:9 pytest
 - **Learnings for future iterations:** Chapter-aware chunking should derive ranges from the sentence stream (or provided chapter ranges) to prevent cross-chapter payloads.
+---
+## 2026-01-23 15:05 - US-020
+- What was implemented: Added an idempotent Qdrant purge helper plus a CLI script to drop the chunk collection with clear logging; added tests covering purge behavior.
+- Files changed: ingest.py, scripts/purge_qdrant.py, tests/test_qdrant_cleanup.py, AGENTS.md, progress.txt
+- Testing: ruff format ingest.py tests/test_qdrant_cleanup.py scripts/purge_qdrant.py; ruff check .; QDRANT_URL=http://127.0.0.1:9 TEI_BASE_URL=http://127.0.0.1:9 pytest
+- **Learnings for future iterations:** Purging Qdrant via `delete_collection` is the fastest way to reset embeddings after a model migration. `scripts/purge_qdrant.py` needs `PYTHONPATH=/app` when run from the repo root.
 ---

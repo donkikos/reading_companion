@@ -8,6 +8,7 @@
 - `static/` holds the client UI (`index.html`, `script.js`, `style.css`).
 - `tests/` contains pytest suites; `tests/fixtures/` holds test fixtures.
 - `scripts/compose_healthcheck.py` is used by Docker Compose health checks.
+- `scripts/purge_qdrant.py` drops the Qdrant collection for a full embedding reset.
 - `docs/` and `plan/` contain project notes and PRD artifacts.
 
 ## Build, Test, and Development Commands
@@ -15,6 +16,7 @@
 - `python main.py` runs the API (or `uvicorn main:app --reload` for live reload).
 - `python server.py` runs the MCP tool server.
 - `docker compose up --build` starts the app + Qdrant + TEI stack.
+- Some scripts under `scripts/` import top-level modules; run them with `PYTHONPATH=/app` when needed.
 - `ruff format` formats Python files (line length 100).
 - `ruff check .` runs linting.
 - `pytest` runs the test suite.
