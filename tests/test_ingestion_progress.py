@@ -5,22 +5,6 @@ import db
 import ingest
 
 
-class _FakeCollection:
-    def add(self, ids, documents, metadatas):
-        return None
-
-    def delete(self, **_kwargs):
-        return None
-
-
-class _FakeChromaClient:
-    def __init__(self):
-        self._collection = _FakeCollection()
-
-    def get_or_create_collection(self, name):
-        return self._collection
-
-
 class _FakeQdrantClient:
     def __init__(self, vector_dim):
         self._vector_dim = vector_dim
@@ -50,8 +34,6 @@ def test_ingestion_reports_stage_progress(monkeypatch, tmp_path):
     db_path = tmp_path / "state.db"
     monkeypatch.setattr(db, "DB_PATH", str(db_path))
     db.init_db()
-
-    monkeypatch.setattr(ingest, "chroma_client", _FakeChromaClient())
 
     vector_dim = ingest.QDRANT_VECTOR_DIM or 8
     fake_qdrant = _FakeQdrantClient(vector_dim)

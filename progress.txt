@@ -1,11 +1,11 @@
 ## Codebase Patterns
 - Skip EPUB navigation docs like `nav.xhtml` when building sentence streams from the spine.
-- On re-ingest, clear existing Chroma docs, chapters, and Qdrant chunks by `book_id` before reindexing.
+- On re-ingest, clear existing chapters and Qdrant chunks by `book_id` before reindexing.
 - Ingestion progress percentages are derived from total sentence counts computed before streaming.
 - Use `IngestionProgress` stage ranges to map full-pipeline progress updates to UI percentages.
 - Ingestion progress messages are prefixed with stage index `i/N` to drive the UI progress display.
 - Check Qdrant availability with `_ensure_qdrant_available` before collection operations to fail fast.
-- In ingestion tests, use fake Qdrant and Chroma clients to avoid external service dependencies.
+- In ingestion tests, use fake Qdrant clients to avoid external service dependencies.
 - Set `QDRANT_PATH` to use a local Qdrant store without a running server.
 - TEI embeddings use `/embed` with `TEI_BASE_URL`, and tests should stub `_tei_embed` for determinism.
 - TEI Docker image is amd64-only; `docker-compose.yml` pins `platform: linux/amd64` for the tei service.
@@ -140,4 +140,10 @@
 - Files changed: ingest.py, scripts/purge_qdrant.py, tests/test_qdrant_cleanup.py, AGENTS.md, progress.txt
 - Testing: ruff format ingest.py tests/test_qdrant_cleanup.py scripts/purge_qdrant.py; ruff check .; QDRANT_URL=http://127.0.0.1:9 TEI_BASE_URL=http://127.0.0.1:9 pytest
 - **Learnings for future iterations:** Purging Qdrant via `delete_collection` is the fastest way to reset embeddings after a model migration. `scripts/purge_qdrant.py` needs `PYTHONPATH=/app` when run from the repo root.
+---
+## 2026-01-24 17:48 - US-015
+- What was implemented: Removed Chroma ingestion and cleanup, migrated `/sync` and MCP context retrieval to Qdrant search/scroll with TEI embeddings, and added a Qdrant-backed sync test.
+- Files changed: AGENTS.md, ingest.py, main.py, server.py, requirements.txt, docs/arch.md, docs/impl_plan.md, tests/test_delete_book.py, tests/test_ingestion_fixture.py, tests/test_ingestion_progress.py, tests/test_tei_integration.py, tests/test_sync_qdrant.py, progress.txt
+- Testing: ruff format ingest.py main.py server.py tests/test_delete_book.py tests/test_ingestion_fixture.py tests/test_ingestion_progress.py tests/test_tei_integration.py tests/test_sync_qdrant.py; ruff check .; pytest
+- **Learnings for future iterations:** Use Qdrant payload `sentences` + `pos_start` to map semantic matches back to precise `seq_id` updates when Chroma is removed.
 ---

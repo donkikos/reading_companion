@@ -35,7 +35,7 @@ Core workflow:
 - Python uses 4-space indentation.
 - Apply `ruff format` before linting; keep lines at 100 chars.
 - Use `snake_case` for functions/variables, `PascalCase` for classes, and `UPPER_CASE` for constants.
-- Persist local state under `.data/` (books, ChromaDB, SQLite); avoid committing generated data.
+- Persist local state under `.data/` (books, Qdrant local store if `QDRANT_PATH`, SQLite); avoid committing generated data.
 
 ## Testing Guidelines
 - Tests are in `tests/test_*.py` and use `pytest`.

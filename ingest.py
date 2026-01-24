@@ -1,5 +1,4 @@
 import spacy
-import chromadb
 import hashlib
 import ebooklib
 import json
@@ -13,9 +12,8 @@ from ebooklib import epub
 from bs4 import BeautifulSoup
 import db
 
-# Initialize Spacy and ChromaDB
+# Initialize Spacy
 _NLP = None
-chroma_client = chromadb.PersistentClient(path=".data/chroma_db")
 logger = logging.getLogger(__name__)
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "book_chunks")
 _RAW_QDRANT_VECTOR_DIM = os.getenv("QDRANT_VECTOR_DIM")
@@ -512,7 +510,7 @@ def _build_qdrant_points(payloads, vector_dim):
 
 
 def ingest_epub(epub_path, progress_callback=None):
-    """Parse EPUB, tokenize sentences, and store in ChromaDB & SQLite."""
+    """Parse EPUB, tokenize sentences, and store in Qdrant & SQLite."""
     print(f"Ingesting: {epub_path}")
     progress = IngestionProgress(progress_callback)
 
@@ -546,18 +544,9 @@ def ingest_epub(epub_path, progress_callback=None):
 
     print(f"Processing '{title}' by {author}")
 
-    # Chroma Collection
-    collection = chroma_client.get_or_create_collection(name="library")
-
     chapters_data = []  # For SQL
 
-    # Batch storage
-    ids = []
-    documents = []
-    metadatas = []
-
     if is_reingest:
-        collection.delete(where={"book_hash": book_hash})
         db.delete_chapters(book_hash)
 
     progress.stage("parsing", 0)
@@ -591,31 +580,10 @@ def ingest_epub(epub_path, progress_callback=None):
         progress.stage("qdrant", 100)
 
     progress.stage("metadata", 0)
-    for item in stream:
-        ids.append(f"{book_hash}_{item.seq_id}")
-        documents.append(item.text)
-        metadatas.append(
-            {
-                "book_hash": book_hash,
-                "seq_id": item.seq_id,
-                "chapter_index": item.chapter_index,
-            }
-        )
-
-        if len(ids) >= 500:
-            collection.add(ids=ids, documents=documents, metadatas=metadatas)
-            ids = []
-            documents = []
-            metadatas = []
-
     for chapter_index, chapter_title, start_seq, end_seq in chapters:
         chapters_data.append(
             (book_hash, chapter_index, chapter_title, start_seq, end_seq)
         )
-
-    # Flush remaining
-    if ids:
-        collection.add(ids=ids, documents=documents, metadatas=metadatas)
 
     # 2. Store in SQLite
     if is_reingest:

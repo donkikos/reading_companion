@@ -1,13 +1,10 @@
-import os
 import db
-import chromadb
 from mcp.server.fastmcp import FastMCP
+from qdrant_client.http import models as qmodels
 
-# Initialize ChromaDB
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CHROMA_PATH = os.path.join(BASE_DIR, ".data", "chroma_db")
-chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
-collection = chroma_client.get_or_create_collection(name="library")
+import ingest
+
+DEFAULT_LIMIT = 20
 
 mcp = FastMCP("Spoiler Reader")
 
@@ -56,77 +53,105 @@ def get_book_context(
     if current_cursor == 0:
         return "User has not started reading this book."
 
-    # 2. Build Filter
-    # Base filter: book_hash AND seq_id <= current_cursor
-    filters = [{"book_hash": {"$eq": book_hash}}, {"seq_id": {"$lte": current_cursor}}]
-
-    # Chapter restriction
+    # 2. Build Qdrant filter (book + cursor)
+    filters = [
+        qmodels.FieldCondition(
+            key="book_id", match=qmodels.MatchValue(value=book_hash)
+        ),
+        qmodels.FieldCondition(key="pos_end", range=qmodels.Range(lte=current_cursor)),
+    ]
     if chapter_index is not None:
-        filters.append({"chapter_index": {"$eq": chapter_index}})
+        filters.append(
+            qmodels.FieldCondition(
+                key="chapter_index", match=qmodels.MatchValue(value=chapter_index)
+            )
+        )
 
-    final_filter = {"$and": filters}
+    qdrant_filter = qmodels.Filter(must=filters)
 
-    # 3. Execute Query
-    results = None
+    try:
+        qdrant_client = ingest._get_qdrant_client()
+        ingest._ensure_qdrant_available(qdrant_client)
+    except RuntimeError as exc:
+        return f"Qdrant unavailable: {exc}"
+
+    if not qdrant_client.collection_exists(ingest.QDRANT_COLLECTION):
+        return f"Qdrant collection '{ingest.QDRANT_COLLECTION}' is missing."
+
+    limit = limit or DEFAULT_LIMIT
 
     if query:
-        # Semantic Search
-        print(f"DEBUG: Querying '{query}' with filter {final_filter}")
-        results = collection.query(
-            query_texts=[query], n_results=limit, where=final_filter
-        )
-        # Flatten results (Chroma returns list of lists)
-        docs = results["documents"][0]
-        metas = results["metadatas"][0]
+        try:
+            query_vector = ingest._tei_embed(query)[0]
+        except RuntimeError as exc:
+            return f"Embedding unavailable: {exc}"
 
-        if not docs:
+        results = qdrant_client.search(
+            collection_name=ingest.QDRANT_COLLECTION,
+            query_vector=query_vector,
+            query_filter=qdrant_filter,
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        if not results:
             return "No matching context found within current reading progress."
 
-        # For semantic search, we might want to return them ranked by relevance (already done by query)
-        # OR sorted by sequence order to make a coherent story?
-        # Usually RAG prefers relevance. But let's sort by sequence for readability if they are close?
-        # Let's stick to relevance but include location info.
-
         response = f"--- Search Results (User read up to {current_cursor}) ---\n"
-        for i, doc in enumerate(docs):
-            seq = metas[i]["seq_id"]
-            chap = metas[i]["chapter_index"]
-            response += f"[Ch{chap}:Seq{seq}] {doc}\n"
+        for point in results:
+            payload = point.payload or {}
+            seq = payload.get("pos_start", 0)
+            chap = payload.get("chapter_index", "?")
+            text = payload.get("text", "")
+            response += f"[Ch{chap}:Seq{seq}] {text}\n"
         return response
 
-    else:
-        # Context Retrieval (Recent history or Chapter specific)
-        # If no query, we just want the *last* read sentences, or the chapter text.
-
-        # We use .get() but we want to sort. Chroma .get() supports limit/offset but not sort direction efficiently in API.
-        # We fetch a chunk.
-
-        print(f"DEBUG: Fetching context with filter {final_filter}")
-        results = collection.get(
-            where=final_filter,
-            limit=limit * 2,  # Fetch more to allow Python-side sorting/filtering
-            include=["documents", "metadatas"],
+    # Context Retrieval (Recent history or Chapter specific)
+    max_total = max(limit * 10, 200)
+    collected = []
+    offset = None
+    while len(collected) < max_total:
+        points, offset = qdrant_client.scroll(
+            collection_name=ingest.QDRANT_COLLECTION,
+            scroll_filter=qdrant_filter,
+            limit=min(256, max_total - len(collected)),
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
         )
+        if not points:
+            break
+        collected.extend(points)
+        if offset is None:
+            break
 
-        if not results["documents"]:
-            return "No context found."
+    if not collected:
+        return "No context found."
 
-        # Zip and Sort by seq_id
-        zipped = zip(results["metadatas"], results["documents"])
-        # Sort ascending
-        sorted_docs = sorted(zipped, key=lambda x: x[0]["seq_id"])
+    sentences_by_seq = {}
+    for point in collected:
+        payload = point.payload or {}
+        pos_start = payload.get("pos_start")
+        sentences = payload.get("sentences") or []
+        if not isinstance(pos_start, int):
+            continue
+        for idx, sentence in enumerate(sentences):
+            seq_id = pos_start + idx
+            if seq_id <= current_cursor and seq_id not in sentences_by_seq:
+                sentences_by_seq[seq_id] = sentence
 
-        # If we just want "context", usually we mean "what just happened?" -> Last items.
-        # If chapter_index was specified, we might want the *start* of the chapter?
-        # Let's assume "recent context" (tail) is default behavior if no query.
+    if not sentences_by_seq:
+        return "No context found."
 
-        selected_docs = sorted_docs[-limit:]
+    sorted_items = sorted(sentences_by_seq.items(), key=lambda item: item[0])
+    selected = [sentence for _, sentence in sorted_items][-limit:]
 
-        response = f"--- Context (User read up to {current_cursor}) ---\n"
-        for meta, doc in selected_docs:
-            response += f"{doc}\n"
+    response = f"--- Context (User read up to {current_cursor}) ---\n"
+    for sentence in selected:
+        response += f"{sentence}\n"
 
-        return response
+    return response
 
 
 if __name__ == "__main__":

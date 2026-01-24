@@ -8,25 +8,6 @@ import ingest
 import main
 
 
-class _FakeCollection:
-    def __init__(self):
-        self._documents = []
-
-    def add(self, ids, documents, metadatas):
-        self._documents.extend(zip(ids, documents, metadatas))
-
-    def delete(self, **_kwargs):
-        self._documents = []
-
-
-class _FakeChromaClient:
-    def __init__(self):
-        self._collection = _FakeCollection()
-
-    def get_or_create_collection(self, name):
-        return self._collection
-
-
 class _FakeQdrantClient:
     def __init__(self, vector_dim):
         self._vector_dim = vector_dim
@@ -65,8 +46,6 @@ def test_ingest_fixture_and_verify_qdrant(monkeypatch, tmp_path):
     db_path = tmp_path / "state.db"
     monkeypatch.setattr(db, "DB_PATH", str(db_path))
     db.init_db()
-
-    monkeypatch.setattr(ingest, "chroma_client", _FakeChromaClient())
 
     vector_dim = ingest.QDRANT_VECTOR_DIM or 8
     fake_qdrant = _FakeQdrantClient(vector_dim)

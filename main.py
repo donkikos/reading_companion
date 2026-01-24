@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 
 import ingest
 import db
-import chromadb
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
@@ -21,10 +20,6 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
-# Initialize ChromaDB
-chroma_client = chromadb.PersistentClient(path=".data/chroma_db")
-collection = chroma_client.get_or_create_collection(name="library")
 
 # Ensure books directory
 BOOKS_DIR = os.path.abspath(".data/books")
@@ -107,7 +102,6 @@ def delete_book(book_hash: str):
     ingest._delete_qdrant_book_chunks(
         qdrant_client, ingest.QDRANT_COLLECTION, book_hash
     )
-    collection.delete(where={"book_hash": book_hash})
     db.delete_book_data(book_hash)
 
     file_path = book.get("filepath")
@@ -147,34 +141,92 @@ def normalize_text(text):
     return " ".join(text.split())
 
 
+def _best_sentence_match(sentences, request_text):
+    if not sentences:
+        return None, 0.0
+
+    req_norm = normalize_text(request_text)
+    if not req_norm:
+        return 0, 0.0
+
+    req_tokens = set(req_norm.split())
+    best_idx = 0
+    best_score = 0.0
+
+    for idx, sentence in enumerate(sentences):
+        sent_norm = normalize_text(sentence)
+        if not sent_norm:
+            continue
+        if req_norm in sent_norm or sent_norm in req_norm:
+            return idx, 1.0
+        if req_tokens:
+            sent_tokens = set(sent_norm.split())
+            overlap = len(req_tokens & sent_tokens) / len(req_tokens)
+            if overlap > best_score:
+                best_score = overlap
+                best_idx = idx
+
+    return best_idx, best_score
+
+
 @app.post("/sync")
 async def sync_position(request: SyncRequest):
     print(f"\n--- SYNC REQUEST ---\nClient Text: '{request.text}'")
     if request.cfi:
         print(f"Client CFI: {request.cfi}")
 
-    # Query ChromaDB for the closest match WITHIN this book
-    results = collection.query(
-        query_texts=[request.text], n_results=1, where={"book_hash": request.book_hash}
+    try:
+        qdrant_client = ingest._get_qdrant_client()
+        ingest._ensure_qdrant_available(qdrant_client)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if not qdrant_client.collection_exists(ingest.QDRANT_COLLECTION):
+        raise HTTPException(
+            status_code=503,
+            detail=f"Qdrant collection '{ingest.QDRANT_COLLECTION}' is missing.",
+        )
+
+    try:
+        query_vector = ingest._tei_embed(request.text)[0]
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    from qdrant_client.http import models as qmodels
+
+    book_filter = qmodels.Filter(
+        must=[
+            qmodels.FieldCondition(
+                key="book_id", match=qmodels.MatchValue(value=request.book_hash)
+            )
+        ]
+    )
+    results = qdrant_client.search(
+        collection_name=ingest.QDRANT_COLLECTION,
+        query_vector=query_vector,
+        limit=3,
+        query_filter=book_filter,
+        with_payload=True,
+        with_vectors=False,
     )
 
-    if not results["documents"][0]:
+    if not results:
         print("Result: No semantic match found in vector DB.")
         return JSONResponse(content={"status": "no_match"}, status_code=404)
 
-    distance = results["distances"][0][0]
-    matched_text = results["documents"][0][0]
-    metadata = results["metadatas"][0][0]
+    top = results[0]
+    payload = top.payload or {}
+    sentences = payload.get("sentences") or []
+    score = getattr(top, "score", 0.0) or 0.0
+    print(f"Top Semantic Candidate score: {score:.4f}")
 
-    print(f"Top Semantic Candidate: '{matched_text}' (Distance: {distance:.4f})")
-
-    # Improved Matching Logic
-    is_match = distance < 0.4
+    best_idx, best_score = _best_sentence_match(sentences, request.text)
+    is_match = score >= 0.2 or best_score >= 0.5
 
     if not is_match:
         # Fallback: Aggressive Normalization
         req_norm = normalize_text(request.text)
-        match_norm = normalize_text(matched_text)
+        match_norm = normalize_text(payload.get("text", ""))
 
         # Check substrings
         if req_norm in match_norm or match_norm in req_norm:
@@ -184,7 +236,11 @@ async def sync_position(request: SyncRequest):
             print(f"Fallback Failed.\nReq Norm: {req_norm}\nMatch Norm: {match_norm}")
 
     if is_match:
-        seq_id = metadata["seq_id"]
+        pos_start = payload.get("pos_start", 0)
+        if isinstance(best_idx, int) and best_idx >= 0:
+            seq_id = pos_start + best_idx
+        else:
+            seq_id = pos_start
         db.update_cursor(request.book_hash, seq_id, cfi=request.cfi)
 
         # Fetch updated details to return chapter info
@@ -194,11 +250,11 @@ async def sync_position(request: SyncRequest):
             "status": "synced",
             "seq_id": seq_id,
             "chapter_title": details["chapter_title"],
-            "distance": distance,
+            "score": score,
         }
     else:
         return JSONResponse(
-            content={"status": "poor_match", "distance": distance}, status_code=400
+            content={"status": "poor_match", "score": score}, status_code=400
         )
 
 

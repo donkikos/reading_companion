@@ -14,3 +14,7 @@ Required environment variables for embeddings:
 - `TEI_BATCH_SIZE` (default: `32`)
 
 The TEI container caches the model in a Docker volume (`tei_data`) so it is reused across restarts.
+
+## Vector Storage
+
+Chunk embeddings and payloads are stored in Qdrant. ChromaDB is no longer used for ingestion or sync.

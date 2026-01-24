@@ -6,16 +6,6 @@ import ingest
 import main
 
 
-class _FakeCollection:
-    def __init__(self):
-        self.deleted = False
-        self.where = None
-
-    def delete(self, **kwargs):
-        self.deleted = True
-        self.where = kwargs.get("where")
-
-
 class _FakeQdrantClient:
     def __init__(self):
         self.deleted = False
@@ -40,9 +30,6 @@ def test_delete_book_removes_data(monkeypatch, tmp_path):
     db.add_chapters([(book_hash, 0, "Chapter 1", 0, 9)])
     db.update_cursor(book_hash, 5)
 
-    fake_collection = _FakeCollection()
-    monkeypatch.setattr(main, "collection", fake_collection)
-
     fake_qdrant = _FakeQdrantClient()
     monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
     monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
@@ -52,8 +39,6 @@ def test_delete_book_removes_data(monkeypatch, tmp_path):
 
     assert response.status_code == 200
     assert response.json()["ok"] is True
-    assert fake_collection.deleted is True
-    assert fake_collection.where == {"book_hash": book_hash}
     assert fake_qdrant.deleted is True
     assert db.get_book(book_hash) is None
     assert db.get_chapters_list(book_hash) == []
@@ -73,8 +58,6 @@ def test_reingest_updates_path_when_final_exists(monkeypatch, tmp_path):
     final_path.write_bytes(b"existing")
 
     db.add_book(book_hash, "Title", "Author", str(temp_path), 10)
-    fake_collection = _FakeCollection()
-    monkeypatch.setattr(main, "collection", fake_collection)
     monkeypatch.setattr(ingest, "ingest_epub", lambda *_args, **_kwargs: book_hash)
 
     main.BOOKS_DIR = str(tmp_path)

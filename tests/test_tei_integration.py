@@ -31,8 +31,6 @@ def test_end_to_end_ingestion_with_tei_embeddings(monkeypatch):
 
     epub_path = os.path.join("tests", "fixtures", "minimal.epub")
     book_hash = ingest.get_file_hash(epub_path)
-    collection = ingest.chroma_client.get_or_create_collection(name="library")
-    collection.delete(where={"book_hash": book_hash})
     db.delete_book_data(book_hash)
 
     try:
@@ -56,7 +54,6 @@ def test_end_to_end_ingestion_with_tei_embeddings(monkeypatch):
         assert vector is not None
         assert len(vector) > 0
     finally:
-        collection.delete(where={"book_hash": book_hash})
         db.delete_book_data(book_hash)
         if client.collection_exists(collection_name):
             client.delete_collection(collection_name)

@@ -1,0 +1,63 @@
+from types import SimpleNamespace
+
+from fastapi.testclient import TestClient
+
+import db
+import ingest
+import main
+
+
+class _FakeQdrantClient:
+    def __init__(self, payloads):
+        self._payloads = payloads
+
+    def get_collections(self):
+        return []
+
+    def collection_exists(self, _name):
+        return True
+
+    def search(self, **_kwargs):
+        return [
+            SimpleNamespace(payload=payload, score=0.9) for payload in self._payloads
+        ]
+
+
+def test_sync_updates_cursor_from_qdrant_payload(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    book_hash = "book123"
+    db.add_book(book_hash, "Title", "Author", "/tmp/book.epub", 50)
+    db.add_chapters([(book_hash, 0, "Chapter 1", 0, 49)])
+
+    payload = {
+        "book_id": book_hash,
+        "chapter_index": 0,
+        "pos_start": 10,
+        "pos_end": 17,
+        "sentences": ["The quick brown fox", "jumps over the lazy dog"],
+        "text": "The quick brown fox jumps over the lazy dog",
+    }
+
+    fake_qdrant = _FakeQdrantClient([payload])
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+    monkeypatch.setattr(ingest, "_tei_embed", lambda _text, **_kwargs: [[0.1, 0.2]])
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/sync",
+        json={
+            "book_hash": book_hash,
+            "text": "brown fox",
+            "cfi": "epubcfi(/6/2[chap01]!/4/1:0)",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "synced"
+    assert payload["seq_id"] == 10
+    assert db.get_cursor(book_hash) == 10

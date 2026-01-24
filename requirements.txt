@@ -4,7 +4,6 @@ python-multipart
 ebooklib
 beautifulsoup4
 spacy
-chromadb
 pydantic
 mcp
 qdrant-client
