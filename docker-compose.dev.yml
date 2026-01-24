@@ -1,24 +1,8 @@
 services:
   app:
     image: epub_ai_reader_ralph_app
-
-  codex:
-    build:
-      context: .
-      dockerfile: Dockerfile.codex1
-    image: epub_ai_reader_ralph_codex
-    working_dir: /app
-    init: true
-    user: "pwuser"
-    environment:
-      CODEX_HOME: /codex
-      QDRANT_HOST: qdrant
-      TEI_BASE_URL: http://tei:80
-      TEI_MODEL: ${TEI_MODEL:-BAAI/bge-base-en-v1.5}
-      TEI_BATCH_SIZE: ${TEI_BATCH_SIZE:-32}
+    build: .
     volumes:
       - ./:/app
-      - ./.codex_container:/codex
-      - ./skills:/codex/skills
-    stdin_open: true
-    tty: true
+      - ./.data:/app/.data
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
