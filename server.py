@@ -1,25 +1,38 @@
+from typing import Any
+
 import db
+import ingest
 from mcp.server.fastmcp import FastMCP
 from qdrant_client.http import models as qmodels
 
-import ingest
-
 DEFAULT_LIMIT = 20
+MAX_LIMIT = 256
+
+
+def _normalize_limit(k: int | None, limit: int | None) -> int:
+    chosen = limit if limit is not None else k
+    if not isinstance(chosen, int) or chosen <= 0:
+        chosen = DEFAULT_LIMIT
+    return min(chosen, MAX_LIMIT)
+
 
 mcp = FastMCP("Spoiler Reader")
 
 
 @mcp.tool()
-def list_books() -> str:
+def list_books() -> dict[str, list[dict[str, Any]]]:
     """List all available books in the library with their IDs (hashes)."""
     books = db.get_all_books()
-    if not books:
-        return "No books in library."
-
-    report = "Available Books:\n"
-    for b in books:
-        report += f"- {b['title']} by {b['author']} (ID: {b['hash']})\n"
-    return report
+    return {
+        "books": [
+            {
+                "book_id": b["hash"],
+                "title": b.get("title"),
+                "author": b.get("author"),
+            }
+            for b in books
+        ]
+    }
 
 
 @mcp.tool()
@@ -35,10 +48,14 @@ def list_chapters(book_hash: str) -> str:
     return report
 
 
-@mcp.tool()
+@mcp.tool(structured_output=True)
 def get_book_context(
-    book_hash: str, query: str = None, chapter_index: int = None, limit: int = 20
-) -> str:
+    book_hash: str,
+    query: str = None,
+    chapter_index: int = None,
+    k: int = DEFAULT_LIMIT,
+    limit: int | None = None,
+) -> dict[str, Any]:
     """
     Retrieve context from the book, strictly limited to what the user has read.
 
@@ -46,12 +63,27 @@ def get_book_context(
         book_hash: The ID of the book.
         query: Optional semantic search query (e.g., "what did the butler say?").
         chapter_index: Optional chapter index to restrict search to.
-        limit: Max number of sentences to return (default 20).
+        k: Max number of chunks/sentences to return (default 20, max 256).
+        limit: Deprecated alias for k.
     """
     # 1. Get Safety Cursor
-    current_cursor = db.get_cursor(book_hash)
+    current_cursor = db.get_reading_position(book_hash)
+    if (
+        current_cursor is None
+        or not isinstance(current_cursor, int)
+        or current_cursor < 0
+    ):
+        raise ValueError(
+            "Reading state missing or invalid. Sync the current reading position first."
+        )
     if current_cursor == 0:
-        return "User has not started reading this book."
+        return {
+            "mode": "context",
+            "book_id": book_hash,
+            "cursor": current_cursor,
+            "status": "not_started",
+            "message": "User has not started reading this book.",
+        }
 
     # 2. Build Qdrant filter (book + cursor)
     filters = [
@@ -73,41 +105,156 @@ def get_book_context(
         qdrant_client = ingest._get_qdrant_client()
         ingest._ensure_qdrant_available(qdrant_client)
     except RuntimeError as exc:
-        return f"Qdrant unavailable: {exc}"
+        return {
+            "mode": "error",
+            "book_id": book_hash,
+            "cursor": current_cursor,
+            "error": f"Qdrant unavailable: {exc}",
+        }
 
     if not qdrant_client.collection_exists(ingest.QDRANT_COLLECTION):
-        return f"Qdrant collection '{ingest.QDRANT_COLLECTION}' is missing."
+        return {
+            "mode": "error",
+            "book_id": book_hash,
+            "cursor": current_cursor,
+            "error": f"Qdrant collection '{ingest.QDRANT_COLLECTION}' is missing.",
+        }
 
-    limit = limit or DEFAULT_LIMIT
+    limit = _normalize_limit(k, limit)
+
+    def _merge_search_chunks(points):
+        chunks = []
+        for point in points:
+            payload = point.payload or {}
+            pos_start = payload.get("pos_start")
+            sentences = payload.get("sentences") or []
+            text = payload.get("text")
+            chapter = payload.get("chapter_index", "?")
+            if not isinstance(pos_start, int):
+                continue
+            if not sentences and isinstance(text, str) and text:
+                sentences = [text]
+            if not sentences:
+                continue
+            pos_end = payload.get("pos_end")
+            if not isinstance(pos_end, int):
+                pos_end = pos_start + len(sentences) - 1
+            chunks.append(
+                {
+                    "chapter": chapter,
+                    "pos_start": pos_start,
+                    "pos_end": pos_end,
+                    "sentences": sentences,
+                }
+            )
+
+        if not chunks:
+            return []
+
+        chunks.sort(key=lambda item: (item["chapter"], item["pos_start"]))
+        merged = []
+        current = None
+        current_sentences_by_seq = {}
+        current_order = []
+
+        def _flush_current():
+            if not current:
+                return
+            ordered = [current_sentences_by_seq[seq] for seq in current_order]
+            merged.append(
+                {
+                    "chapter": current["chapter"],
+                    "pos_start": current["pos_start"],
+                    "pos_end": current["pos_end"],
+                    "text": " ".join(ordered),
+                }
+            )
+
+        for chunk in chunks:
+            if (
+                current
+                and chunk["chapter"] == current["chapter"]
+                and chunk["pos_start"] <= current["pos_end"] + 1
+            ):
+                start = chunk["pos_start"]
+                for idx, sentence in enumerate(chunk["sentences"]):
+                    seq_id = start + idx
+                    if seq_id in current_sentences_by_seq:
+                        continue
+                    current_sentences_by_seq[seq_id] = sentence
+                    current_order.append(seq_id)
+                current["pos_end"] = max(current["pos_end"], chunk["pos_end"])
+                continue
+
+            _flush_current()
+            current = {
+                "chapter": chunk["chapter"],
+                "pos_start": chunk["pos_start"],
+                "pos_end": chunk["pos_end"],
+            }
+            current_sentences_by_seq = {}
+            current_order = []
+            for idx, sentence in enumerate(chunk["sentences"]):
+                seq_id = chunk["pos_start"] + idx
+                current_sentences_by_seq[seq_id] = sentence
+                current_order.append(seq_id)
+
+        _flush_current()
+        return merged
 
     if query:
         try:
             query_vector = ingest._tei_embed(query)[0]
         except RuntimeError as exc:
-            return f"Embedding unavailable: {exc}"
+            return {
+                "mode": "error",
+                "book_id": book_hash,
+                "cursor": current_cursor,
+                "error": f"Embedding unavailable: {exc}",
+            }
 
-        results = qdrant_client.search(
-            collection_name=ingest.QDRANT_COLLECTION,
-            query_vector=query_vector,
-            query_filter=qdrant_filter,
-            limit=limit,
-            with_payload=True,
-            with_vectors=False,
-        )
+        if hasattr(qdrant_client, "query_points"):
+            query_response = qdrant_client.query_points(
+                collection_name=ingest.QDRANT_COLLECTION,
+                query=query_vector,
+                query_filter=qdrant_filter,
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+            )
+            results = query_response.points
+        else:
+            results = qdrant_client.search(
+                collection_name=ingest.QDRANT_COLLECTION,
+                query_vector=query_vector,
+                query_filter=qdrant_filter,
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+            )
 
         if not results:
-            return "No matching context found within current reading progress."
+            return {
+                "mode": "search",
+                "book_id": book_hash,
+                "cursor": current_cursor,
+                "query": query,
+                "chunks": [],
+                "message": "No matching context found within current reading progress.",
+            }
 
-        response = f"--- Search Results (User read up to {current_cursor}) ---\n"
-        for point in results:
-            payload = point.payload or {}
-            seq = payload.get("pos_start", 0)
-            chap = payload.get("chapter_index", "?")
-            text = payload.get("text", "")
-            response += f"[Ch{chap}:Seq{seq}] {text}\n"
-        return response
+        merged_chunks = _merge_search_chunks(results)
+        return {
+            "mode": "search",
+            "book_id": book_hash,
+            "cursor": current_cursor,
+            "query": query,
+            "chunks": merged_chunks,
+        }
 
     # Context Retrieval (Recent history or Chapter specific)
+    # TODO: Optimize context retrieval to avoid wide scroll + dedupe; consider a
+    # sentence-level index or ordered range queries to fetch the last N sentences.
     max_total = max(limit * 10, 200)
     collected = []
     offset = None
@@ -127,7 +274,13 @@ def get_book_context(
             break
 
     if not collected:
-        return "No context found."
+        return {
+            "mode": "context",
+            "book_id": book_hash,
+            "cursor": current_cursor,
+            "sentences": [],
+            "message": "No context found.",
+        }
 
     sentences_by_seq = {}
     for point in collected:
@@ -138,20 +291,31 @@ def get_book_context(
             continue
         for idx, sentence in enumerate(sentences):
             seq_id = pos_start + idx
-            if seq_id <= current_cursor and seq_id not in sentences_by_seq:
+            if seq_id > current_cursor:
+                break
+            if seq_id not in sentences_by_seq:
                 sentences_by_seq[seq_id] = sentence
 
     if not sentences_by_seq:
-        return "No context found."
+        return {
+            "mode": "context",
+            "book_id": book_hash,
+            "cursor": current_cursor,
+            "sentences": [],
+            "message": "No context found.",
+        }
 
     sorted_items = sorted(sentences_by_seq.items(), key=lambda item: item[0])
-    selected = [sentence for _, sentence in sorted_items][-limit:]
+    selected = [{"seq_id": seq_id, "text": sentence} for seq_id, sentence in sorted_items][
+        -limit:
+    ]
 
-    response = f"--- Context (User read up to {current_cursor}) ---\n"
-    for sentence in selected:
-        response += f"{sentence}\n"
-
-    return response
+    return {
+        "mode": "context",
+        "book_id": book_hash,
+        "cursor": current_cursor,
+        "sentences": selected,
+    }
 
 
 if __name__ == "__main__":

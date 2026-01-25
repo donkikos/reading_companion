@@ -232,6 +232,20 @@ def get_cursor(book_hash):
     return row[0] if row else 0
 
 
+def get_reading_position(book_hash):
+    """Retrieve the stored reading position for a book, or None if missing."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT current_seq_id FROM reading_state WHERE book_hash = ?", (book_hash,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return row[0]
+
+
 def get_book(book_hash):
     """Get book metadata."""
     conn = sqlite3.connect(DB_PATH)

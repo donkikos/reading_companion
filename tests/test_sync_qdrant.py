@@ -17,10 +17,16 @@ class _FakeQdrantClient:
     def collection_exists(self, _name):
         return True
 
-    def search(self, **_kwargs):
-        return [
+    def query_points(self, **_kwargs):
+        points = [
             SimpleNamespace(payload=payload, score=0.9) for payload in self._payloads
         ]
+        return _FakeQueryResponse(points)
+
+
+class _FakeQueryResponse:
+    def __init__(self, points):
+        self.points = points
 
 
 def test_sync_updates_cursor_from_qdrant_payload(monkeypatch, tmp_path):
@@ -116,3 +122,54 @@ def test_sync_qdrant_unavailable(monkeypatch, tmp_path):
 
     assert response.status_code == 503
     assert "Qdrant is unavailable" in response.json()["detail"]
+
+
+def test_sync_tei_unavailable(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    fake_qdrant = _FakeQdrantClient([])
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+
+    def _raise_unavailable(_text, **_kwargs):
+        raise RuntimeError("TEI embedding service is unavailable.")
+
+    monkeypatch.setattr(ingest, "_tei_embed", _raise_unavailable)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/sync",
+        json={
+            "book_hash": "book123",
+            "text": "brown fox",
+            "cfi": "epubcfi(/6/2[chap01]!/4/1:0)",
+        },
+    )
+
+    assert response.status_code == 503
+    assert "TEI embedding service is unavailable" in response.json()["detail"]
+
+
+def test_sync_rejects_empty_query(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    fake_qdrant = _FakeQdrantClient([])
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/sync",
+        json={
+            "book_hash": "book123",
+            "text": "   ",
+            "cfi": "epubcfi(/6/2[chap01]!/4/1:0)",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Query text must not be empty" in response.json()["detail"]

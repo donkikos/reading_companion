@@ -37,6 +37,9 @@ Core workflow:
 - Use `snake_case` for functions/variables, `PascalCase` for classes, and `UPPER_CASE` for constants.
 - Persist local state under `.data/` (books, Qdrant local store if `QDRANT_PATH`, SQLite); avoid committing generated data.
 
+## MCP Retrieval Notes
+- `server.get_book_context` accepts `k` (max 256); `limit` is a deprecated alias.
+
 ## Testing Guidelines
 - Tests are in `tests/test_*.py` and use `pytest`.
 - `tests/conftest.py` adds the repo root to `sys.path` so single-test runs can import top-level modules.
