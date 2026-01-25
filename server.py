@@ -48,14 +48,14 @@ def list_chapters(book_hash: str) -> str:
     return report
 
 
-@mcp.tool()
+@mcp.tool(structured_output=True)
 def get_book_context(
     book_hash: str,
     query: str = None,
     chapter_index: int = None,
     k: int = DEFAULT_LIMIT,
     limit: int | None = None,
-) -> str:
+) -> dict[str, Any]:
     """
     Retrieve context from the book, strictly limited to what the user has read.
 
