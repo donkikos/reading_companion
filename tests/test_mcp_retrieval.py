@@ -6,12 +6,14 @@ import server
 class _FakeQdrantClient:
     def __init__(self):
         self.last_filter = None
+        self.last_limit = None
 
     def collection_exists(self, _name):
         return True
 
     def search(self, **kwargs):
         self.last_filter = kwargs.get("query_filter")
+        self.last_limit = kwargs.get("limit")
         return []
 
 
@@ -131,7 +133,7 @@ def test_get_book_context_truncates_sentences_at_cursor(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
     monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
 
-    response = server.get_book_context(book_hash, limit=10)
+    response = server.get_book_context(book_hash, k=10)
 
     assert "Sentence 2" in response
     assert "Sentence 3" in response
@@ -178,7 +180,7 @@ def test_get_book_context_dedupes_overlapping_sentences(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
     monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
 
-    response = server.get_book_context(book_hash, limit=10)
+    response = server.get_book_context(book_hash, k=10)
 
     lines = [
         line for line in response.splitlines() if line and not line.startswith("---")
@@ -190,3 +192,19 @@ def test_get_book_context_dedupes_overlapping_sentences(monkeypatch, tmp_path):
         "Sentence 3",
         "Sentence 4",
     ]
+
+
+def test_get_book_context_caps_k_at_max(monkeypatch, tmp_path):
+    _setup_db(monkeypatch, tmp_path)
+    book_hash = "book123"
+    db.add_book(book_hash, "Title", "Author", "/tmp/book.epub", 10)
+    db.update_cursor(book_hash, 5)
+
+    fake_qdrant = _FakeQdrantClient()
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+    monkeypatch.setattr(ingest, "_tei_embed", lambda _text: [[0.1, 0.2]])
+
+    server.get_book_context(book_hash, query="test", k=300)
+
+    assert fake_qdrant.last_limit == server.MAX_LIMIT

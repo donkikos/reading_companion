@@ -6,6 +6,15 @@ from mcp.server.fastmcp import FastMCP
 from qdrant_client.http import models as qmodels
 
 DEFAULT_LIMIT = 20
+MAX_LIMIT = 256
+
+
+def _normalize_limit(k: int | None, limit: int | None) -> int:
+    chosen = limit if limit is not None else k
+    if not isinstance(chosen, int) or chosen <= 0:
+        chosen = DEFAULT_LIMIT
+    return min(chosen, MAX_LIMIT)
+
 
 mcp = FastMCP("Spoiler Reader")
 
@@ -41,7 +50,11 @@ def list_chapters(book_hash: str) -> str:
 
 @mcp.tool()
 def get_book_context(
-    book_hash: str, query: str = None, chapter_index: int = None, limit: int = 20
+    book_hash: str,
+    query: str = None,
+    chapter_index: int = None,
+    k: int = DEFAULT_LIMIT,
+    limit: int | None = None,
 ) -> str:
     """
     Retrieve context from the book, strictly limited to what the user has read.
@@ -50,7 +63,8 @@ def get_book_context(
         book_hash: The ID of the book.
         query: Optional semantic search query (e.g., "what did the butler say?").
         chapter_index: Optional chapter index to restrict search to.
-        limit: Max number of sentences to return (default 20).
+        k: Max number of chunks/sentences to return (default 20, max 256).
+        limit: Deprecated alias for k.
     """
     # 1. Get Safety Cursor
     current_cursor = db.get_reading_position(book_hash)
@@ -90,7 +104,7 @@ def get_book_context(
     if not qdrant_client.collection_exists(ingest.QDRANT_COLLECTION):
         return f"Qdrant collection '{ingest.QDRANT_COLLECTION}' is missing."
 
-    limit = limit or DEFAULT_LIMIT
+    limit = _normalize_limit(k, limit)
 
     if query:
         try:

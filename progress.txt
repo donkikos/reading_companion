@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - Use `db.get_reading_position` when retrieval needs to distinguish missing reading state from `user_pos = 0`.
+- `server.get_book_context` uses `k` (max 256) to cap retrieval size; `limit` is deprecated.
 ## 2026-01-25 03:43 - US-001
 - What was implemented: Standardized TEI unavailable error message and added /sync coverage to return HTTP 503 when embeddings fail.
 - Files changed: ingest.py, tests/test_sync_qdrant.py
@@ -29,4 +30,10 @@
 - Files changed: tests/test_mcp_retrieval.py
 - Testing: ruff format tests/test_mcp_retrieval.py; ruff check .; pytest
 - **Learnings for future iterations:** Sentence-context tests should validate order and deduplication across overlapping Qdrant chunks.
+---
+## 2026-01-25 03:55 - US-006
+- What was implemented: Added k-based retrieval limits with a max cap for MCP context searches and tests for the cap.
+- Files changed: server.py, tests/test_mcp_retrieval.py, AGENTS.md, progress.txt
+- Testing: ruff format server.py tests/test_mcp_retrieval.py; ruff check .; pytest
+- **Learnings for future iterations:** MCP retrieval should cap k to 256 to avoid oversized Qdrant responses.
 ---

@@ -98,7 +98,7 @@
         "Tests pass"
       ],
       "priority": "low",
-      "passes": false,
+      "passes": true,
       "notes": ""
     }
   ]
