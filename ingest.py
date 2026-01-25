@@ -346,9 +346,7 @@ def _tei_embed(texts, base_url=None, batch_size=None, progress_callback=None):
                 f"TEI embedding request failed ({exc.code}): {message}"
             ) from exc
         except urllib.error.URLError as exc:
-            raise RuntimeError(
-                "TEI embedding service is unavailable; ingestion cannot proceed."
-            ) from exc
+            raise RuntimeError("TEI embedding service is unavailable.") from exc
 
         result = json.loads(body)
         if not isinstance(result, list):
@@ -597,6 +595,7 @@ def ingest_epub(epub_path, progress_callback=None):
         _ensure_qdrant_available(qdrant_client)
         progress.stage("embedding", 0)
         embedding_start = time.monotonic()
+
         def embedding_progress(processed, total, batch_index, total_batches):
             if total <= 0:
                 return

@@ -1,1 +1,7 @@
 ## Codebase Patterns
+## 2026-01-25 03:43 - US-001
+- What was implemented: Standardized TEI unavailable error message and added /sync coverage to return HTTP 503 when embeddings fail.
+- Files changed: ingest.py, tests/test_sync_qdrant.py
+- Testing: ruff format ingest.py tests/test_sync_qdrant.py; ruff check .; pytest
+- **Learnings for future iterations:** Use RuntimeError from `_tei_embed` to surface TEI outages as HTTP 503 responses in `/sync` tests.
+---

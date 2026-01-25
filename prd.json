@@ -17,7 +17,7 @@
         "Tests pass"
       ],
       "priority": "high",
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
