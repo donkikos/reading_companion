@@ -24,3 +24,9 @@
 - Testing: ruff format server.py tests/test_mcp_retrieval.py; ruff check .; pytest
 - **Learnings for future iterations:** Sentence-context assembly should short-circuit per-chunk once seq_id exceeds the reading cursor to avoid leaking future sentences.
 ---
+## 2026-01-25 03:53 - US-005
+- What was implemented: Added coverage to ensure sentence-based context deduplicates overlapping sentences while preserving order.
+- Files changed: tests/test_mcp_retrieval.py
+- Testing: ruff format tests/test_mcp_retrieval.py; ruff check .; pytest
+- **Learnings for future iterations:** Sentence-context tests should validate order and deduplication across overlapping Qdrant chunks.
+---

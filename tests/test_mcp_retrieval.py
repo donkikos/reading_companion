@@ -137,3 +137,56 @@ def test_get_book_context_truncates_sentences_at_cursor(monkeypatch, tmp_path):
     assert "Sentence 3" in response
     assert "Sentence 4" in response
     assert "Sentence 5" not in response
+
+
+def test_get_book_context_dedupes_overlapping_sentences(monkeypatch, tmp_path):
+    _setup_db(monkeypatch, tmp_path)
+    book_hash = "book123"
+    db.add_book(book_hash, "Title", "Author", "/tmp/book.epub", 10)
+    db.update_cursor(book_hash, 10)
+
+    points = [
+        _FakePoint(
+            {
+                "book_id": book_hash,
+                "chapter_index": 0,
+                "pos_start": 0,
+                "pos_end": 4,
+                "sentences": [
+                    "Sentence 0",
+                    "Sentence 1",
+                    "Sentence 2",
+                    "Sentence 3",
+                ],
+            }
+        ),
+        _FakePoint(
+            {
+                "book_id": book_hash,
+                "chapter_index": 0,
+                "pos_start": 2,
+                "pos_end": 6,
+                "sentences": [
+                    "Sentence 2",
+                    "Sentence 3",
+                    "Sentence 4",
+                ],
+            }
+        ),
+    ]
+    fake_qdrant = _FakeScrollQdrantClient(points)
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+
+    response = server.get_book_context(book_hash, limit=10)
+
+    lines = [
+        line for line in response.splitlines() if line and not line.startswith("---")
+    ]
+    assert lines == [
+        "Sentence 0",
+        "Sentence 1",
+        "Sentence 2",
+        "Sentence 3",
+        "Sentence 4",
+    ]
