@@ -4,17 +4,23 @@ import server
 
 
 class _FakeQdrantClient:
-    def __init__(self):
+    def __init__(self, points=None):
         self.last_filter = None
         self.last_limit = None
+        self._points = points or []
 
     def collection_exists(self, _name):
         return True
 
-    def search(self, **kwargs):
+    def query_points(self, **kwargs):
         self.last_filter = kwargs.get("query_filter")
         self.last_limit = kwargs.get("limit")
-        return []
+        return _FakeQueryResponse(self._points)
+
+
+class _FakeQueryResponse:
+    def __init__(self, points):
+        self.points = points
 
 
 class _FakePoint:
@@ -81,7 +87,8 @@ def test_get_book_context_zero_position(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest, "_get_qdrant_client", _boom)
 
     response = server.get_book_context(book_hash)
-    assert response == "User has not started reading this book."
+    assert response["status"] == "not_started"
+    assert response["message"] == "User has not started reading this book."
 
 
 def test_get_book_context_filters_by_book_and_position(monkeypatch, tmp_path):
@@ -96,7 +103,8 @@ def test_get_book_context_filters_by_book_and_position(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest, "_tei_embed", lambda _text: [[0.1, 0.2]])
 
     response = server.get_book_context(book_hash, query="test")
-    assert response == "No matching context found within current reading progress."
+    assert response["chunks"] == []
+    assert "No matching context found" in response["message"]
 
     qdrant_filter = fake_qdrant.last_filter
     assert qdrant_filter is not None
@@ -135,10 +143,11 @@ def test_get_book_context_truncates_sentences_at_cursor(monkeypatch, tmp_path):
 
     response = server.get_book_context(book_hash, k=10)
 
-    assert "Sentence 2" in response
-    assert "Sentence 3" in response
-    assert "Sentence 4" in response
-    assert "Sentence 5" not in response
+    texts = [item["text"] for item in response["sentences"]]
+    assert "Sentence 2" in texts
+    assert "Sentence 3" in texts
+    assert "Sentence 4" in texts
+    assert "Sentence 5" not in texts
 
 
 def test_get_book_context_dedupes_overlapping_sentences(monkeypatch, tmp_path):
@@ -182,10 +191,8 @@ def test_get_book_context_dedupes_overlapping_sentences(monkeypatch, tmp_path):
 
     response = server.get_book_context(book_hash, k=10)
 
-    lines = [
-        line for line in response.splitlines() if line and not line.startswith("---")
-    ]
-    assert lines == [
+    texts = [item["text"] for item in response["sentences"]]
+    assert texts == [
         "Sentence 0",
         "Sentence 1",
         "Sentence 2",
@@ -208,3 +215,52 @@ def test_get_book_context_caps_k_at_max(monkeypatch, tmp_path):
     server.get_book_context(book_hash, query="test", k=300)
 
     assert fake_qdrant.last_limit == server.MAX_LIMIT
+
+
+def test_get_book_context_merges_overlapping_query_chunks(monkeypatch, tmp_path):
+    _setup_db(monkeypatch, tmp_path)
+    book_hash = "book123"
+    db.add_book(book_hash, "Title", "Author", "/tmp/book.epub", 10)
+    db.update_cursor(book_hash, 10)
+
+    points = [
+        _FakePoint(
+            {
+                "book_id": book_hash,
+                "chapter_index": 4,
+                "pos_start": 794,
+                "pos_end": 796,
+                "sentences": [
+                    "Hashim's piece was a distillation of the idea of friendship,",
+                    "within and across all borders.",
+                    "And whether it was all down to the outlook or not,",
+                ],
+                "text": "A",
+            }
+        ),
+        _FakePoint(
+            {
+                "book_id": book_hash,
+                "chapter_index": 4,
+                "pos_start": 795,
+                "pos_end": 797,
+                "sentences": [
+                    "within and across all borders.",
+                    "And whether it was all down to the outlook or not,",
+                    "Yatima was glad to be witnessing it.",
+                ],
+                "text": "B",
+            }
+        ),
+    ]
+    fake_qdrant = _FakeQdrantClient(points)
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+    monkeypatch.setattr(ingest, "_tei_embed", lambda _text: [[0.1, 0.2]])
+
+    response = server.get_book_context(book_hash, query="test", k=10)
+
+    assert response["chunks"][0]["pos_start"] == 794
+    assert response["chunks"][0]["pos_end"] == 797
+    text = response["chunks"][0]["text"]
+    assert text.count("Hashim's piece was a distillation of the idea of friendship,") == 1

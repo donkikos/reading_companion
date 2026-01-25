@@ -17,10 +17,16 @@ class _FakeQdrantClient:
     def collection_exists(self, _name):
         return True
 
-    def search(self, **_kwargs):
-        return [
+    def query_points(self, **_kwargs):
+        points = [
             SimpleNamespace(payload=payload, score=0.9) for payload in self._payloads
         ]
+        return _FakeQueryResponse(points)
+
+
+class _FakeQueryResponse:
+    def __init__(self, points):
+        self.points = points
 
 
 def test_sync_updates_cursor_from_qdrant_payload(monkeypatch, tmp_path):
