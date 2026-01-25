@@ -30,6 +30,7 @@ class NoCacheStaticFiles(StaticFiles):
             response.headers["Pragma"] = "no-cache"
         return response
 
+
 # Ensure books directory
 BOOKS_DIR = os.path.abspath(".data/books")
 os.makedirs(BOOKS_DIR, exist_ok=True)
@@ -191,6 +192,9 @@ async def sync_position(request: SyncRequest):
     print(f"\n--- SYNC REQUEST ---\nClient Text: '{request.text}'")
     if request.cfi:
         print(f"Client CFI: {request.cfi}")
+
+    if not request.text or not request.text.strip():
+        raise HTTPException(status_code=400, detail="Query text must not be empty.")
 
     try:
         qdrant_client = ingest._get_qdrant_client()

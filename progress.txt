@@ -5,3 +5,9 @@
 - Testing: ruff format ingest.py tests/test_sync_qdrant.py; ruff check .; pytest
 - **Learnings for future iterations:** Use RuntimeError from `_tei_embed` to surface TEI outages as HTTP 503 responses in `/sync` tests.
 ---
+## 2026-01-25 03:45 - US-002
+- What was implemented: Reject empty/whitespace sync queries with HTTP 400 before embedding.
+- Files changed: main.py, tests/test_sync_qdrant.py
+- Testing: ruff format main.py tests/test_sync_qdrant.py; ruff check .; pytest
+- **Learnings for future iterations:** Validate sync query text early to avoid unnecessary TEI calls and return clear 400 errors.
+---

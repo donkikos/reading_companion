@@ -144,3 +144,26 @@ def test_sync_tei_unavailable(monkeypatch, tmp_path):
 
     assert response.status_code == 503
     assert "TEI embedding service is unavailable" in response.json()["detail"]
+
+
+def test_sync_rejects_empty_query(monkeypatch, tmp_path):
+    db_path = tmp_path / "state.db"
+    monkeypatch.setattr(db, "DB_PATH", str(db_path))
+    db.init_db()
+
+    fake_qdrant = _FakeQdrantClient([])
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/sync",
+        json={
+            "book_hash": "book123",
+            "text": "   ",
+            "cfi": "epubcfi(/6/2[chap01]!/4/1:0)",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Query text must not be empty" in response.json()["detail"]
