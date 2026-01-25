@@ -1,8 +1,9 @@
+from typing import Any
+
 import db
+import ingest
 from mcp.server.fastmcp import FastMCP
 from qdrant_client.http import models as qmodels
-
-import ingest
 
 DEFAULT_LIMIT = 20
 
@@ -10,16 +11,19 @@ mcp = FastMCP("Spoiler Reader")
 
 
 @mcp.tool()
-def list_books() -> str:
+def list_books() -> dict[str, list[dict[str, Any]]]:
     """List all available books in the library with their IDs (hashes)."""
     books = db.get_all_books()
-    if not books:
-        return "No books in library."
-
-    report = "Available Books:\n"
-    for b in books:
-        report += f"- {b['title']} by {b['author']} (ID: {b['hash']})\n"
-    return report
+    return {
+        "books": [
+            {
+                "book_id": b["hash"],
+                "title": b.get("title"),
+                "author": b.get("author"),
+            }
+            for b in books
+        ]
+    }
 
 
 @mcp.tool()
@@ -49,7 +53,15 @@ def get_book_context(
         limit: Max number of sentences to return (default 20).
     """
     # 1. Get Safety Cursor
-    current_cursor = db.get_cursor(book_hash)
+    current_cursor = db.get_reading_position(book_hash)
+    if (
+        current_cursor is None
+        or not isinstance(current_cursor, int)
+        or current_cursor < 0
+    ):
+        raise ValueError(
+            "Reading state missing or invalid. Sync the current reading position first."
+        )
     if current_cursor == 0:
         return "User has not started reading this book."
 

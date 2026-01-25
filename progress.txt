@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Use `db.get_reading_position` when retrieval needs to distinguish missing reading state from `user_pos = 0`.
 ## 2026-01-25 03:43 - US-001
 - What was implemented: Standardized TEI unavailable error message and added /sync coverage to return HTTP 503 when embeddings fail.
 - Files changed: ingest.py, tests/test_sync_qdrant.py
@@ -10,4 +11,10 @@
 - Files changed: main.py, tests/test_sync_qdrant.py
 - Testing: ruff format main.py tests/test_sync_qdrant.py; ruff check .; pytest
 - **Learnings for future iterations:** Validate sync query text early to avoid unnecessary TEI calls and return clear 400 errors.
+---
+## 2026-01-25 03:49 - US-003
+- What was implemented: Structured MCP book listing and spoiler-safe retrieval now validates reading state before building Qdrant filters, with new tests covering missing state and filters.
+- Files changed: db.py, server.py, tests/test_mcp_retrieval.py
+- Testing: ruff format db.py server.py tests/test_mcp_retrieval.py; ruff check .; pytest
+- **Learnings for future iterations:** Retrieval should error on missing reading state instead of assuming position 0, while still treating user_pos=0 as "not started."
 ---
