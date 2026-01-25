@@ -48,10 +48,10 @@ fi
 
 # Running on host: execute inside the dev container.
 if ! docker image inspect epub_ai_reader_ralph_app >/dev/null 2>&1; then
-  docker compose -f docker-compose.yml -f docker-compose.dev.yml build app
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.codex.yml build app
 fi
 if ! docker image inspect epub_ai_reader_ralph_codex >/dev/null 2>&1; then
-  docker compose -f docker-compose.yml -f docker-compose.dev.yml build codex
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.codex.yml build codex
 fi
 
 iterations="$1"
@@ -59,7 +59,7 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 
 for ((i=1; i<=iterations; i++)); do
   run_failed=0
-  docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm codex ./ralph-codex-container.sh "$i" "$timestamp" || run_failed=1
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.codex.yml run --rm codex ./ralph-codex-container.sh "$i" "$timestamp" || run_failed=1
 
   log=".codex/logs/codex_iteration_${i}_${timestamp}.txt"
 
