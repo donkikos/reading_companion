@@ -15,6 +15,7 @@ from typing import Dict
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    db.init_db()
     ingest.cleanup_orphaned_qdrant_chunks()
     yield
 
