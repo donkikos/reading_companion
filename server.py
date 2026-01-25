@@ -150,7 +150,9 @@ def get_book_context(
             continue
         for idx, sentence in enumerate(sentences):
             seq_id = pos_start + idx
-            if seq_id <= current_cursor and seq_id not in sentences_by_seq:
+            if seq_id > current_cursor:
+                break
+            if seq_id not in sentences_by_seq:
                 sentences_by_seq[seq_id] = sentence
 
     if not sentences_by_seq:

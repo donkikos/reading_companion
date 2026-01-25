@@ -15,6 +15,22 @@ class _FakeQdrantClient:
         return []
 
 
+class _FakePoint:
+    def __init__(self, payload):
+        self.payload = payload
+
+
+class _FakeScrollQdrantClient:
+    def __init__(self, points):
+        self._points = points
+
+    def collection_exists(self, _name):
+        return True
+
+    def scroll(self, **_kwargs):
+        return self._points, None
+
+
 def _setup_db(monkeypatch, tmp_path):
     db_path = tmp_path / "state.db"
     monkeypatch.setattr(db, "DB_PATH", str(db_path))
@@ -87,3 +103,37 @@ def test_get_book_context_filters_by_book_and_position(monkeypatch, tmp_path):
     pos_match = next(f for f in must_filters if getattr(f, "key", None) == "pos_end")
     assert book_match.match.value == book_hash
     assert pos_match.range.lte == 5
+
+
+def test_get_book_context_truncates_sentences_at_cursor(monkeypatch, tmp_path):
+    _setup_db(monkeypatch, tmp_path)
+    book_hash = "book123"
+    db.add_book(book_hash, "Title", "Author", "/tmp/book.epub", 10)
+    db.update_cursor(book_hash, 4)
+
+    points = [
+        _FakePoint(
+            {
+                "book_id": book_hash,
+                "chapter_index": 0,
+                "pos_start": 2,
+                "pos_end": 10,
+                "sentences": [
+                    "Sentence 2",
+                    "Sentence 3",
+                    "Sentence 4",
+                    "Sentence 5",
+                ],
+            }
+        )
+    ]
+    fake_qdrant = _FakeScrollQdrantClient(points)
+    monkeypatch.setattr(ingest, "_get_qdrant_client", lambda: fake_qdrant)
+    monkeypatch.setattr(ingest, "_ensure_qdrant_available", lambda _client: None)
+
+    response = server.get_book_context(book_hash, limit=10)
+
+    assert "Sentence 2" in response
+    assert "Sentence 3" in response
+    assert "Sentence 4" in response
+    assert "Sentence 5" not in response

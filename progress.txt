@@ -18,3 +18,9 @@
 - Testing: ruff format db.py server.py tests/test_mcp_retrieval.py; ruff check .; pytest
 - **Learnings for future iterations:** Retrieval should error on missing reading state instead of assuming position 0, while still treating user_pos=0 as "not started."
 ---
+## 2026-01-25 03:51 - US-004
+- What was implemented: Sentence-context retrieval now stops at the spoiler boundary, with test coverage ensuring sentences beyond user_pos are excluded.
+- Files changed: server.py, tests/test_mcp_retrieval.py
+- Testing: ruff format server.py tests/test_mcp_retrieval.py; ruff check .; pytest
+- **Learnings for future iterations:** Sentence-context assembly should short-circuit per-chunk once seq_id exceeds the reading cursor to avoid leaking future sentences.
+---
