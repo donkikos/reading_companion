@@ -1,5 +1,14 @@
 // Library Logic
-document.addEventListener('DOMContentLoaded', loadLibrary);
+document.addEventListener('DOMContentLoaded', () => {
+    const taskId = new URLSearchParams(window.location.search).get('task');
+    if (taskId) {
+        const list = document.getElementById('book-list');
+        list.innerHTML = '<p id="progress-text">Resuming upload...</p><p id="progress-detail"></p>';
+        pollTask(taskId);
+        return;
+    }
+    loadLibrary();
+});
 
 const fileInput = document.getElementById('file-upload');
 fileInput.addEventListener('change', uploadBook);
@@ -29,6 +38,20 @@ function loadLibrary() {
                         ${posText}
                     </p>
                 `;
+
+                const actions = document.createElement('div');
+                actions.className = 'book-actions';
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.type = 'button';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    confirmDelete(book, card);
+                });
+                actions.appendChild(deleteBtn);
+                card.appendChild(actions);
+
                 card.onclick = () => openReader(book.hash, book.title);
                 list.appendChild(card);
             });
@@ -45,12 +68,15 @@ function uploadBook(e) {
     formData.append('file', file);
 
     const list = document.getElementById('book-list');
-    list.innerHTML = '<div class="progress-container"><div id="progress-bar" style="width:0%; height:20px; background:green;"></div></div><p id="progress-text">Uploading...</p>';
+    list.innerHTML = '<p id="progress-text">Uploading...</p><p id="progress-detail"></p>';
+    document.querySelectorAll('.progress-container, #progress-bar').forEach(el => el.remove());
 
     fetch('/upload', { method: 'POST', body: formData })
         .then(res => res.json())
         .then(data => {
-            pollTask(data.task_id);
+            const taskId = data.task_id;
+            window.history.replaceState(null, '', `/?task=${encodeURIComponent(taskId)}`);
+            pollTask(taskId);
         })
         .catch(err => {
             console.error(err);
@@ -58,16 +84,52 @@ function uploadBook(e) {
         });
 }
 
+function confirmDelete(book, card) {
+    const confirmed = window.confirm(`Delete "${book.title}"? This cannot be undone.`);
+    if (!confirmed) {
+        return;
+    }
+
+    fetch(`/books/${book.hash}`, { method: 'DELETE' })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(payload => {
+                    throw new Error(payload.detail || 'Delete failed.');
+                });
+            }
+            return res.json();
+        })
+        .then(() => {
+            card.remove();
+            const list = document.getElementById('book-list');
+            if (!list.children.length) {
+                list.innerHTML = 'No books found.';
+            }
+        })
+        .catch(err => {
+            console.error("Delete Error:", err);
+            alert(err.message);
+        });
+}
+
 function pollTask(taskId) {
     const interval = setInterval(() => {
         fetch(`/tasks/${taskId}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    const err = new Error(`Task fetch failed (${res.status})`);
+                    err.status = res.status;
+                    throw err;
+                }
+                return res.json();
+            })
             .then(task => {
-                const bar = document.getElementById('progress-bar');
                 const text = document.getElementById('progress-text');
+                const detail = document.getElementById('progress-detail');
+                document.querySelectorAll('.progress-container, #progress-bar').forEach(el => el.remove());
 
-                if (bar) bar.style.width = task.progress + '%';
-                if (text) text.innerText = task.message + ` (${task.progress}%)`;
+                if (text) text.innerText = task.message;
+                if (detail) detail.innerText = task.detail || '';
 
                 if (task.status === 'completed') {
                     clearInterval(interval);
@@ -76,6 +138,20 @@ function pollTask(taskId) {
                     clearInterval(interval);
                     if (text) text.innerText = "Error: " + task.error;
                 }
+            })
+            .catch(err => {
+                clearInterval(interval);
+                const text = document.getElementById('progress-text');
+                const detail = document.getElementById('progress-detail');
+                if (text) {
+                    if (err.status === 404) {
+                        text.innerText = "Task disappeared. Refreshing library...";
+                    } else {
+                        text.innerText = "Error checking task status.";
+                    }
+                }
+                if (detail) detail.innerText = '';
+                loadLibrary();
             });
     }, 1000);
 }

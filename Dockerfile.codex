@@ -1,0 +1,21 @@
+FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl ca-certificates gnupg ripgrep git \
+  && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+  && apt-get install -y --no-install-recommends nodejs \
+  && npm install -g @openai/codex \
+  && npm cache clean --force \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt \
+  && pip install --no-cache-dir playwright==1.44.0 ruff pytest
+
+ENV CODEX_HOME=/app/.codex
+WORKDIR /app

@@ -1,20 +1,36 @@
 import os
+import re
 import shutil
 import uuid
+from contextlib import asynccontextmanager
+
 import ingest
 import db
-import chromadb
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Dict
 
-app = FastAPI()
 
-# Initialize ChromaDB
-chroma_client = chromadb.PersistentClient(path=".data/chroma_db")
-collection = chroma_client.get_or_create_collection(name="library")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    db.init_db()
+    ingest.cleanup_orphaned_qdrant_chunks()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
 
 # Ensure books directory
 BOOKS_DIR = os.path.abspath(".data/books")
@@ -30,34 +46,44 @@ class SyncRequest(BaseModel):
     cfi: str = None  # Added CFI
 
 
+class VerifyIngestionRequest(BaseModel):
+    book_id: str
+    sample_size: int = 5
+
+
 def run_ingestion_task(task_id: str, file_path: str):
     tasks[task_id]["status"] = "processing"
     tasks[task_id]["progress"] = 0
+    tasks[task_id]["message"] = "Starting..."
 
-    def update_progress(msg, percent):
+    def update_progress(msg, percent, detail=None):
         tasks[task_id]["message"] = msg
         tasks[task_id]["progress"] = percent
+        tasks[task_id]["detail"] = detail
 
     try:
         book_hash = ingest.ingest_epub(file_path, progress_callback=update_progress)
 
-        # Rename file to hash
+        # Rename file to hash and always persist the final path.
         final_path = os.path.join(BOOKS_DIR, f"{book_hash}.epub")
-        if not os.path.exists(final_path):
-            os.rename(file_path, final_path)
-            db.update_book_path(book_hash, final_path)
-        else:
-            # Cleanup temp if duplicate
-            if os.path.exists(file_path):
+        if os.path.exists(file_path):
+            if os.path.exists(final_path):
                 os.remove(file_path)
+            else:
+                os.rename(file_path, final_path)
+        db.update_book_path(book_hash, final_path)
 
         tasks[task_id]["status"] = "completed"
         tasks[task_id]["book_hash"] = book_hash
         tasks[task_id]["progress"] = 100
+        tasks[task_id]["message"] = "Completed"
+        tasks[task_id]["detail"] = None
 
     except Exception as e:
         tasks[task_id]["status"] = "error"
         tasks[task_id]["error"] = str(e)
+        tasks[task_id]["message"] = "Error"
+        tasks[task_id]["detail"] = None
         if os.path.exists(file_path):
             os.remove(file_path)
 
@@ -73,6 +99,30 @@ def get_book_details(book_hash: str):
     if not details:
         raise HTTPException(status_code=404, detail="Book not found")
     return details
+
+
+@app.delete("/books/{book_hash}")
+def delete_book(book_hash: str):
+    book = db.get_book(book_hash)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    try:
+        qdrant_client = ingest._get_qdrant_client()
+        ingest._ensure_qdrant_available(qdrant_client)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    ingest._delete_qdrant_book_chunks(
+        qdrant_client, ingest.QDRANT_COLLECTION, book_hash
+    )
+    db.delete_book_data(book_hash)
+
+    file_path = book.get("filepath")
+    if file_path and os.path.exists(file_path):
+        os.remove(file_path)
+
+    return {"ok": True, "book_id": book_hash}
 
 
 @app.post("/upload")
@@ -97,7 +147,9 @@ def get_task_status(task_id: str):
     return tasks[task_id]
 
 
-import re
+@app.get("/tasks")
+def list_tasks():
+    return tasks
 
 
 def normalize_text(text):
@@ -108,61 +160,333 @@ def normalize_text(text):
     return " ".join(text.split())
 
 
+def _best_sentence_match(sentences, request_text):
+    if not sentences:
+        return None, 0.0
+
+    req_norm = normalize_text(request_text)
+    if not req_norm:
+        return 0, 0.0
+
+    req_tokens = set(req_norm.split())
+    best_idx = 0
+    best_score = 0.0
+
+    for idx, sentence in enumerate(sentences):
+        sent_norm = normalize_text(sentence)
+        if not sent_norm:
+            continue
+        if req_norm in sent_norm or sent_norm in req_norm:
+            return idx, 1.0
+        if req_tokens:
+            sent_tokens = set(sent_norm.split())
+            overlap = len(req_tokens & sent_tokens) / len(req_tokens)
+            if overlap > best_score:
+                best_score = overlap
+                best_idx = idx
+
+    return best_idx, best_score
+
+
 @app.post("/sync")
 async def sync_position(request: SyncRequest):
     print(f"\n--- SYNC REQUEST ---\nClient Text: '{request.text}'")
     if request.cfi:
         print(f"Client CFI: {request.cfi}")
 
-    # Query ChromaDB for the closest match WITHIN this book
-    results = collection.query(
-        query_texts=[request.text], n_results=1, where={"book_hash": request.book_hash}
-    )
+    if not request.text or not request.text.strip():
+        raise HTTPException(status_code=400, detail="Query text must not be empty.")
 
-    if not results["documents"][0]:
+    try:
+        qdrant_client = ingest._get_qdrant_client()
+        ingest._ensure_qdrant_available(qdrant_client)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if not qdrant_client.collection_exists(ingest.QDRANT_COLLECTION):
+        raise HTTPException(
+            status_code=503,
+            detail=f"Qdrant collection '{ingest.QDRANT_COLLECTION}' is missing.",
+        )
+
+    try:
+        query_vector = ingest._tei_embed(request.text)[0]
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    from qdrant_client.http import models as qmodels
+
+    book_filter = qmodels.Filter(
+        must=[
+            qmodels.FieldCondition(
+                key="book_id", match=qmodels.MatchValue(value=request.book_hash)
+            )
+        ]
+    )
+    if hasattr(qdrant_client, "search"):
+        results = qdrant_client.search(
+            collection_name=ingest.QDRANT_COLLECTION,
+            query_vector=query_vector,
+            limit=3,
+            query_filter=book_filter,
+            with_payload=True,
+            with_vectors=False,
+        )
+    else:
+        query_response = qdrant_client.query_points(
+            collection_name=ingest.QDRANT_COLLECTION,
+            query=query_vector,
+            limit=3,
+            query_filter=book_filter,
+            with_payload=True,
+            with_vectors=False,
+        )
+        results = query_response.points
+
+    if not results:
         print("Result: No semantic match found in vector DB.")
         return JSONResponse(content={"status": "no_match"}, status_code=404)
 
-    distance = results["distances"][0][0]
-    matched_text = results["documents"][0][0]
-    metadata = results["metadatas"][0][0]
+    top = results[0]
+    payload = top.payload or {}
+    sentences = payload.get("sentences") or []
+    score = getattr(top, "score", 0.0) or 0.0
+    print(f"Top Semantic Candidate score: {score:.4f}")
 
-    print(f"Top Semantic Candidate: '{matched_text}' (Distance: {distance:.4f})")
-
-    # Improved Matching Logic
-    is_match = distance < 0.4
+    best_idx, best_score = _best_sentence_match(sentences, request.text)
+    is_match = score >= 0.2 or best_score >= 0.5
 
     if not is_match:
         # Fallback: Aggressive Normalization
         req_norm = normalize_text(request.text)
-        match_norm = normalize_text(matched_text)
+        match_norm = normalize_text(payload.get("text", ""))
 
         # Check substrings
         if req_norm in match_norm or match_norm in req_norm:
-            print(f"Fallback: Substring match confirmed after normalization.")
+            print("Fallback: Substring match confirmed after normalization.")
             is_match = True
         else:
             print(f"Fallback Failed.\nReq Norm: {req_norm}\nMatch Norm: {match_norm}")
 
     if is_match:
-        seq_id = metadata['seq_id']
+        pos_start = payload.get("pos_start", 0)
+        if isinstance(best_idx, int) and best_idx >= 0:
+            seq_id = pos_start + best_idx
+        else:
+            seq_id = pos_start
         db.update_cursor(request.book_hash, seq_id, cfi=request.cfi)
-        
+
         # Fetch updated details to return chapter info
-        details = db.get_book_details(request.book_hash)
-        
+        details = db.get_book_details(request.book_hash) or {}
+        chapter_title = None
+        if isinstance(details, dict):
+            chapter_title = details.get("chapter_title")
+
         return {
-            "status": "synced", 
-            "seq_id": seq_id, 
-            "chapter_title": details['chapter_title'],
-            "distance": distance
+            "status": "synced",
+            "seq_id": seq_id,
+            "chapter_title": chapter_title,
+            "score": score,
         }
     else:
-        return JSONResponse(content={"status": "poor_match", "distance": distance}, status_code=400)
+        return JSONResponse(
+            content={"status": "poor_match", "score": score}, status_code=400
+        )
+
+
+def _is_int(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+@app.post("/ingestion/verify")
+def verify_ingestion(request: VerifyIngestionRequest):
+    book = db.get_book(request.book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    epub_path = book.get("filepath")
+    if not epub_path or not os.path.exists(epub_path):
+        raise HTTPException(status_code=404, detail="Book file not found")
+
+    try:
+        epub_book = ingest.epub.read_epub(epub_path)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to read EPUB: {exc}"
+        ) from exc
+
+    stream, chapters = ingest.build_sentence_stream(epub_book)
+    expected_chunks = len(ingest.create_fixed_window_chunks(stream, chapters=chapters))
+
+    try:
+        qdrant_client = ingest._get_qdrant_client()
+        ingest._ensure_qdrant_available(qdrant_client)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    mismatches = []
+    collection_name = ingest.QDRANT_COLLECTION
+    if not qdrant_client.collection_exists(collection_name):
+        mismatches.append({"type": "collection_missing", "collection": collection_name})
+        return {
+            "ok": False,
+            "book_id": request.book_id,
+            "expected_chunks": expected_chunks,
+            "actual_chunks": 0,
+            "sample_size": 0,
+            "mismatches": mismatches,
+        }
+
+    book_filter = ingest._build_qdrant_book_filter(request.book_id)
+    count_result = qdrant_client.count(
+        collection_name=collection_name, count_filter=book_filter, exact=True
+    )
+    actual_chunks = count_result.count
+    if actual_chunks != expected_chunks:
+        mismatches.append(
+            {
+                "type": "count_mismatch",
+                "expected": expected_chunks,
+                "actual": actual_chunks,
+            }
+        )
+
+    sample_size = request.sample_size
+    if sample_size < 0:
+        mismatches.append({"type": "invalid_sample_size", "value": sample_size})
+        sample_size = 0
+    sample_size = min(sample_size, actual_chunks)
+
+    required_fields = {
+        "book_id",
+        "chapter_index",
+        "pos_start",
+        "pos_end",
+        "sentences",
+        "text",
+    }
+    monotonic_candidates = []
+
+    if sample_size:
+        points, _ = qdrant_client.scroll(
+            collection_name=collection_name,
+            scroll_filter=book_filter,
+            limit=sample_size,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        for point in points:
+            payload = point.payload or {}
+            missing = sorted(required_fields - payload.keys())
+            if missing:
+                mismatches.append(
+                    {
+                        "type": "missing_fields",
+                        "point_id": point.id,
+                        "missing": missing,
+                    }
+                )
+                continue
+
+            if payload["book_id"] != request.book_id:
+                mismatches.append(
+                    {
+                        "type": "book_id_mismatch",
+                        "point_id": point.id,
+                        "value": payload["book_id"],
+                    }
+                )
+
+            if not _is_int(payload["chapter_index"]):
+                mismatches.append(
+                    {
+                        "type": "invalid_chapter_index",
+                        "point_id": point.id,
+                        "value": payload["chapter_index"],
+                    }
+                )
+
+            if not _is_int(payload["pos_start"]) or not _is_int(payload["pos_end"]):
+                mismatches.append(
+                    {
+                        "type": "invalid_positions",
+                        "point_id": point.id,
+                        "pos_start": payload["pos_start"],
+                        "pos_end": payload["pos_end"],
+                    }
+                )
+            else:
+                if payload["pos_start"] > payload["pos_end"]:
+                    mismatches.append(
+                        {
+                            "type": "position_order",
+                            "point_id": point.id,
+                            "pos_start": payload["pos_start"],
+                            "pos_end": payload["pos_end"],
+                        }
+                    )
+                else:
+                    monotonic_candidates.append(
+                        (payload["pos_start"], payload["pos_end"], point.id)
+                    )
+
+            if not isinstance(payload["sentences"], list):
+                mismatches.append(
+                    {
+                        "type": "invalid_sentences",
+                        "point_id": point.id,
+                        "value": payload["sentences"],
+                    }
+                )
+
+            if not isinstance(payload["text"], str):
+                mismatches.append(
+                    {
+                        "type": "invalid_text",
+                        "point_id": point.id,
+                        "value": payload["text"],
+                    }
+                )
+
+        monotonic_candidates.sort(key=lambda item: item[0])
+        prev_start = None
+        prev_end = None
+        for start, end, point_id in monotonic_candidates:
+            if prev_start is not None and start <= prev_start:
+                mismatches.append(
+                    {
+                        "type": "non_monotonic_pos_start",
+                        "point_id": point_id,
+                        "pos_start": start,
+                        "prev_pos_start": prev_start,
+                    }
+                )
+            if prev_end is not None and end <= prev_end:
+                mismatches.append(
+                    {
+                        "type": "non_monotonic_pos_end",
+                        "point_id": point_id,
+                        "pos_end": end,
+                        "prev_pos_end": prev_end,
+                    }
+                )
+            prev_start = start
+            prev_end = end
+
+    ok = len(mismatches) == 0
+    return {
+        "ok": ok,
+        "book_id": request.book_id,
+        "expected_chunks": expected_chunks,
+        "actual_chunks": actual_chunks,
+        "sample_size": sample_size,
+        "mismatches": mismatches,
+    }
 
 
 app.mount("/files", StaticFiles(directory=BOOKS_DIR), name="files")
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/", NoCacheStaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn

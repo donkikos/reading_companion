@@ -1,0 +1,39 @@
+## Codebase Patterns
+- Use `db.get_reading_position` when retrieval needs to distinguish missing reading state from `user_pos = 0`.
+- `server.get_book_context` uses `k` (max 256) to cap retrieval size; `limit` is deprecated.
+## 2026-01-25 03:43 - US-001
+- What was implemented: Standardized TEI unavailable error message and added /sync coverage to return HTTP 503 when embeddings fail.
+- Files changed: ingest.py, tests/test_sync_qdrant.py
+- Testing: ruff format ingest.py tests/test_sync_qdrant.py; ruff check .; pytest
+- **Learnings for future iterations:** Use RuntimeError from `_tei_embed` to surface TEI outages as HTTP 503 responses in `/sync` tests.
+---
+## 2026-01-25 03:45 - US-002
+- What was implemented: Reject empty/whitespace sync queries with HTTP 400 before embedding.
+- Files changed: main.py, tests/test_sync_qdrant.py
+- Testing: ruff format main.py tests/test_sync_qdrant.py; ruff check .; pytest
+- **Learnings for future iterations:** Validate sync query text early to avoid unnecessary TEI calls and return clear 400 errors.
+---
+## 2026-01-25 03:49 - US-003
+- What was implemented: Structured MCP book listing and spoiler-safe retrieval now validates reading state before building Qdrant filters, with new tests covering missing state and filters.
+- Files changed: db.py, server.py, tests/test_mcp_retrieval.py
+- Testing: ruff format db.py server.py tests/test_mcp_retrieval.py; ruff check .; pytest
+- **Learnings for future iterations:** Retrieval should error on missing reading state instead of assuming position 0, while still treating user_pos=0 as "not started."
+---
+## 2026-01-25 03:51 - US-004
+- What was implemented: Sentence-context retrieval now stops at the spoiler boundary, with test coverage ensuring sentences beyond user_pos are excluded.
+- Files changed: server.py, tests/test_mcp_retrieval.py
+- Testing: ruff format server.py tests/test_mcp_retrieval.py; ruff check .; pytest
+- **Learnings for future iterations:** Sentence-context assembly should short-circuit per-chunk once seq_id exceeds the reading cursor to avoid leaking future sentences.
+---
+## 2026-01-25 03:53 - US-005
+- What was implemented: Added coverage to ensure sentence-based context deduplicates overlapping sentences while preserving order.
+- Files changed: tests/test_mcp_retrieval.py
+- Testing: ruff format tests/test_mcp_retrieval.py; ruff check .; pytest
+- **Learnings for future iterations:** Sentence-context tests should validate order and deduplication across overlapping Qdrant chunks.
+---
+## 2026-01-25 03:55 - US-006
+- What was implemented: Added k-based retrieval limits with a max cap for MCP context searches and tests for the cap.
+- Files changed: server.py, tests/test_mcp_retrieval.py, AGENTS.md, progress.txt
+- Testing: ruff format server.py tests/test_mcp_retrieval.py; ruff check .; pytest
+- **Learnings for future iterations:** MCP retrieval should cap k to 256 to avoid oversized Qdrant responses.
+---

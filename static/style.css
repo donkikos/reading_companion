@@ -21,20 +21,6 @@ body {
     cursor: pointer;
 }
 
-.progress-container {
-    width: 100%;
-    background-color: #e0e0e0;
-    border-radius: 4px;
-    margin: 10px 0;
-    overflow: hidden;
-}
-
-#progress-bar {
-    height: 20px;
-    background-color: #4caf50;
-    width: 0%;
-    transition: width 0.3s ease;
-}
 
 #book-list {
     display: grid;
@@ -64,6 +50,26 @@ body {
     margin: 0;
     color: #666;
     font-size: 0.9em;
+}
+
+.book-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.delete-btn {
+    background: #fff4f4;
+    border: 1px solid #e0b4b4;
+    color: #b73c3c;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background: #ffe6e6;
 }
 
 /* Reader View */

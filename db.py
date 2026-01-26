@@ -23,10 +23,13 @@ def init_db():
             title TEXT,
             author TEXT,
             filepath TEXT,
-            total_sequences INTEGER
+            total_sequences INTEGER,
+            embedding_model TEXT,
+            embedding_dim INTEGER
         )
     """
     )
+    _ensure_book_columns(cursor)
 
     # Chapters Table
     cursor.execute(
@@ -60,16 +63,50 @@ def init_db():
     conn.close()
 
 
-def add_book(book_hash, title, author, filepath, total_sequences):
+def _ensure_book_columns(cursor):
+    cursor.execute("PRAGMA table_info(books)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+    if "embedding_model" not in existing_columns:
+        cursor.execute("ALTER TABLE books ADD COLUMN embedding_model TEXT")
+    if "embedding_dim" not in existing_columns:
+        cursor.execute("ALTER TABLE books ADD COLUMN embedding_dim INTEGER")
+
+
+def add_book(
+    book_hash,
+    title,
+    author,
+    filepath,
+    total_sequences,
+    embedding_model=None,
+    embedding_dim=None,
+):
     """Register a new book."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    _ensure_book_columns(cursor)
     cursor.execute(
         """
-        INSERT OR IGNORE INTO books (hash, title, author, filepath, total_sequences)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO books (
+            hash,
+            title,
+            author,
+            filepath,
+            total_sequences,
+            embedding_model,
+            embedding_dim
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """,
-        (book_hash, title, author, filepath, total_sequences),
+        (
+            book_hash,
+            title,
+            author,
+            filepath,
+            total_sequences,
+            embedding_model,
+            embedding_dim,
+        ),
     )
     conn.commit()
     conn.close()
@@ -88,6 +125,64 @@ def add_chapters(chapters_data):
         VALUES (?, ?, ?, ?, ?)
     """,
         chapters_data,
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_chapters(book_hash):
+    """Remove chapters for a book."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM chapters WHERE book_hash = ?", (book_hash,))
+    conn.commit()
+    conn.close()
+
+
+def delete_book_data(book_hash):
+    """Remove all database records for a book."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM reading_state WHERE book_hash = ?", (book_hash,))
+    cursor.execute("DELETE FROM chapters WHERE book_hash = ?", (book_hash,))
+    cursor.execute("DELETE FROM books WHERE hash = ?", (book_hash,))
+    conn.commit()
+    conn.close()
+
+
+def update_book_metadata(
+    book_hash,
+    title,
+    author,
+    filepath,
+    total_sequences,
+    embedding_model=None,
+    embedding_dim=None,
+):
+    """Update existing book metadata."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    _ensure_book_columns(cursor)
+    cursor.execute(
+        """
+        UPDATE books
+        SET title = ?,
+            author = ?,
+            filepath = ?,
+            total_sequences = ?,
+            embedding_model = ?,
+            embedding_dim = ?
+        WHERE hash = ?
+    """,
+        (
+            title,
+            author,
+            filepath,
+            total_sequences,
+            embedding_model,
+            embedding_dim,
+            book_hash,
+        ),
     )
     conn.commit()
     conn.close()
@@ -135,6 +230,20 @@ def get_cursor(book_hash):
     row = cursor.fetchone()
     conn.close()
     return row[0] if row else 0
+
+
+def get_reading_position(book_hash):
+    """Retrieve the stored reading position for a book, or None if missing."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT current_seq_id FROM reading_state WHERE book_hash = ?", (book_hash,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return row[0]
 
 
 def get_book(book_hash):

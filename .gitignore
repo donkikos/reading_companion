@@ -1,14 +1,28 @@
 .venv/
 .data/
+.local/
 .history/
 **/__pycache__/
 *.pid
 *.log
 *.epub
 
+**/.DS_Store
+
 .claude/
 .codex/
 
-test_*.py
+_test_*.py
 
 docs/
+hidden/
+
+**/auth.json
+.codex_container/sessions
+**/tmp
+
+skills/.system/
+
+scripts/_temp_*.py
+
+*.egg-info/

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "epub-ai-reader-ralph"
+version = "0.1.0"
+description = "EPUB AI reader with ingestion, sync, and MCP server."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "python-multipart",
+  "ebooklib",
+  "beautifulsoup4",
+  "spacy",
+  "pydantic",
+  "mcp",
+  "qdrant-client",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+  "playwright",
+]
+
+[tool.setuptools]
+packages = []
