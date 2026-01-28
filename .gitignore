@@ -27,3 +27,5 @@ skills/.system/
 scripts/_temp_*.py
 
 *.egg-info/
+
+_ruff_cache/

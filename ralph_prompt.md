@@ -4,25 +4,25 @@ You are an autonomous coding agent working on a software project.
 
 ## Your Task
 
-1. Read the PRD at `prd.json` (in the same directory as this file)
-2. Read the progress log at `progress.txt` (check Codebase Patterns section first)
+1. Read the PRD at `plans/prd.json` (in the same directory as this file)
+2. Read the progress log at `plans/progress.txt` (check Codebase Patterns section first)
 3. Check you're on the correct branch from PRD `branchName`. If not, check it out or create from branch `dev`. If `dev` branch does not exist, then check it out or create from branch `main`.
 4. Pick the **highest priority** user where `passes: false`
 If priority field is missing from user story, this should be the one YOU decide has the highest priority - not necessarily the first in the list that is `passes: false`.
 5. Implement that single user story
 6. Run quality checks (e.g., typecheck, lint, test - use whatever your project requires)
 7. Update AGENTS.md files if you discover reusable patterns (see below)
-8. Append your progress to `progress.txt`
+8. Append your progress to `plans/progress.txt`
 9. Only after ALL acceptance-criteria checklist items for the story are explicitly verified as completed (including required browser verification, if applicable) AND all quality checks pass, update the PRD to set `passes: true` for the completed story; if any required tool/resource is unavailable, do not mark complete or emit US_SUCCESS
-   - When updating `prd.json`, **anchor the edit to the exact story `id`** (e.g., locate the block for `id: "US-020"` and only flip its `passes` field). Do **not** use a generic search/replace for `"passes": false`.
-   - After editing, re-open `prd.json` and confirm the intended `id` now has `"passes": true` and no other story changed.
-10. If checks pass, commit ALL changes (including `progress.txt` and any `prd.json` updates) with message: `feat: [Story ID] - [Story Title]`
+   - When updating `plans/prd.json`, **anchor the edit to the exact story `id`** (e.g., locate the block for `id: "US-020"` and only flip its `passes` field). Do **not** use a generic search/replace for `"passes": false`.
+   - After editing, re-open `plans/prd.json` and confirm the intended `id` now has `"passes": true` and no other story changed.
+10. If checks pass, commit ALL changes (including `plans/progress.txt` and any `plans/prd.json` updates) with message: `feat: [Story ID] - [Story Title]`
 11. After the successful commit, output a single line: <promise> + US_SUCCESS: [Story ID] + </promise> (concatenate exactly, no spaces)
 12. If ALL stories are now complete, output a second line immediately after: <promise> + COMPLETE + </promise> (concatenate exactly, no spaces)
 
 ## Progress Report Format
 
-APPEND to progress.txt (never replace, always append):
+APPEND to plans/progress.txt (never replace, always append):
 ```
 ## [Date/Time] - [Story ID]
 - What was implemented
@@ -36,7 +36,7 @@ The learnings section is critical - it helps future iterations avoid repeating m
 
 ## Consolidate Patterns
 
-If you discover a **reusable pattern** that future iterations should know, add it to the `## Codebase Patterns` section at the TOP of progress.txt (create it if it doesn't exist). This section should consolidate the most important learnings:
+If you discover a **reusable pattern** that future iterations should know, add it to the `## Codebase Patterns` section at the TOP of plans/progress.txt (create it if it doesn't exist). This section should consolidate the most important learnings:
 
 ```
 ## Codebase Patterns
@@ -69,7 +69,7 @@ Before committing, check if any edited files have learnings worth preserving in 
 **Do NOT add:**
 - Story-specific implementation details
 - Temporary debugging notes
-- Information already in progress.txt
+- Information already in plans/progress.txt
 
 Only update AGENTS.md if you have **genuinely reusable knowledge** that would help future work in that directory.
 
@@ -99,7 +99,7 @@ A frontend story is NOT complete until browser verification passes.
 
 After completing a user story, check if ALL stories have `passes: true`.
 
-If ALL stories within the PRD (prd.json) are complete and passing (and each has all acceptance criteria verified), reply with TWO lines, in this order:
+If ALL stories within the PRD (plans/prd.json) are complete and passing (and each has all acceptance criteria verified), reply with TWO lines, in this order:
 <promise> + US_SUCCESS: [Story ID] + </promise>
 <promise> + COMPLETE + </promise>
 
@@ -110,5 +110,5 @@ If there are still stories with `passes: false`, reply with ONLY the US_SUCCESS 
 - Work on ONE story per iteration
 - Commit frequently
 - Keep CI green
-- Read the Codebase Patterns section in progress.txt before starting
+- Read the Codebase Patterns section in plans/progress.txt before starting
 - Avoid launching nested containers; if running inside a container, do not invoke Docker for service checks.

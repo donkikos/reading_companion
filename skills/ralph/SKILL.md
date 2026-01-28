@@ -232,22 +232,22 @@ Add ability to mark tasks with different statuses.
 
 ## Archiving Previous Runs
 
-**Before writing a new prd.json, check if there is an existing one from a different feature:**
+**Before writing a new plans/prd.json, check if there is an existing one from a different feature:**
 
-1. Read the current `prd.json` if it exists
+1. Read the current `plans/prd.json` if it exists
 2. Check if `branchName` differs from the new feature's branch name
-3. If different AND `progress.txt` has content beyond the header:
+3. If different AND `plans/progress.txt` has content beyond the header:
    - Create archive folder: `archive/YYYY-MM-DD-feature-name/`
-   - Copy current `prd.json` and `progress.txt` to archive
-   - Reset `progress.txt` with fresh header
+   - Copy current `plans/prd.json` and `plans/progress.txt` to archive
+   - Reset `plans/progress.txt` with fresh header
 
-**The ralph.sh script handles this automatically** when you run it, but if you are manually updating prd.json between runs, archive first.
+**The ralph.sh script handles this automatically** when you run it, but if you are manually updating plans/prd.json between runs, archive first.
 
 ---
 
 ## Checklist Before Saving
 
-Before writing prd.json, verify:
+Before writing plans/prd.json, verify:
 
 - [ ] **Previous run archived** (if prd.json exists with different branchName, archive it first)
 - [ ] Each story is completable in one iteration (small enough)

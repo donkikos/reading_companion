@@ -6,8 +6,8 @@ set -e
 
 MAX_ITERATIONS=${1:-10}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PRD_FILE="$SCRIPT_DIR/prd.json"
-PROGRESS_FILE="$SCRIPT_DIR/progress.txt"
+PRD_FILE="$SCRIPT_DIR/plans/prd.json"
+PROGRESS_FILE="$SCRIPT_DIR/plans/progress.txt"
 ARCHIVE_DIR="$SCRIPT_DIR/archive"
 LAST_BRANCH_FILE="$SCRIPT_DIR/.last-branch"
 : "${GIT_AUTHOR_NAME:=Ralph Codex}"
