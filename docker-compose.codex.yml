@@ -2,7 +2,7 @@ services:
   codex:
     build:
       context: .
-      dockerfile: Dockerfile.codex1
+      dockerfile: Dockerfile.codex
     image: epub_ai_reader_ralph_codex
     working_dir: /app
     init: true
