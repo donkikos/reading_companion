@@ -20,6 +20,7 @@ hidden/
 **/auth.json
 .codex_container/sessions
 **/tmp
+**/.tmp
 
 skills/.system/
 

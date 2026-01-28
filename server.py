@@ -16,7 +16,7 @@ def _normalize_limit(k: int | None, limit: int | None) -> int:
     return min(chosen, MAX_LIMIT)
 
 
-mcp = FastMCP("Spoiler Reader")
+mcp = FastMCP("Reading Companion")
 
 
 @mcp.tool()
