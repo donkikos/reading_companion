@@ -9,7 +9,7 @@
 - `tests/` contains pytest suites; `tests/fixtures/` holds test fixtures.
 - `scripts/compose_healthcheck.py` is used by Docker Compose health checks.
 - `scripts/purge_qdrant.py` drops the Qdrant collection for a full embedding reset.
-- `docs/` and `plan/` contain project notes and PRD artifacts.
+- `docs/` and `plans/` contain project notes and PRD artifacts.
 
 ## Build, Test, and Development Commands
 - `pip install -r requirements.txt` installs Python dependencies.
